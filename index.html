@@ -155,7 +155,16 @@ body > * { position: relative; z-index: 1; }
     <div class="fixed-btns">
         <button type="button" id="wrong-book-btn">Mistake Collection</button>
         <button type="button" id="ai-settings-toggle" title="Configure AI API Key to analyze weak knowledge points and study suggestions">🔑 API Key</button>
-        <button type="button" id="ai-demo-btn" title="View a demo of the AI analysis feature" style="padding:10px 20px;border-radius:14px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.25);transition:all 0.25s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(146,64,14,0.25)'">🎬 Demo</button>
+        <button type="button" id="ai-analyze-top-btn" title="Analyze mistakes with AI" style="padding:10px 20px;border-radius:14px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.25);transition:all 0.25s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(245,158,11,0.25)'" disabled>🧠 AI Analyze</button>
+        <button type="button" id="ai-demo-btn" title="View a demo of the AI analysis feature" style="padding:10px 20px;border-radius:14px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.25);transition:all 0.25s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(245,158,11,0.25)'">🎬 Demo</button>
+    </div>
+
+    <!-- AI Result Modal -->
+    <div id="ai-result-overlay" style="display:none;position:fixed;inset:0;background:rgba(245,240,232,0.92);z-index:5000;padding:20px;overflow-y:auto;">
+        <div style="background:#fff;border-radius:24px;padding:24px;width:min(600px,90vw);margin:40px auto;box-shadow:0 12px 40px rgba(0,0,0,0.15);border:1px solid #e0d8c8;position:relative;">
+            <button id="ai-result-close" style="position:absolute;top:12px;right:16px;border:none;background:none;font-size:20px;cursor:pointer;color:#a8a29e;">✕</button>
+            <div id="ai-result"></div>
+        </div>
     </div>
 
     <div id="wrong-book-overlay" role="dialog" aria-modal="true" aria-labelledby="wrong-book-title" aria-hidden="true">
@@ -171,11 +180,9 @@ body > * { position: relative; z-index: 1; }
             </div>
             <div id="wrong-book-list"></div>
             <div class="wrong-book-footer-actions">
-                <button type="button" id="ai-analyze-btn" disabled>🧠 AI Analyze</button>
                 <button type="button" id="wrong-book-clear-all">Clear All</button>
                 <button type="button" id="wrong-book-close">Close</button>
             </div>
-            <div id="ai-result"></div>
         </div>
     </div>
 
@@ -1054,7 +1061,7 @@ function initAIProviderUI() {
     if (settings.model) sel.value = settings.model;
     if (settings.apiKey) keyInput.value = settings.apiKey;
     if (settings.customEndpoint) document.getElementById('ai-custom-endpoint') && (document.getElementById('ai-custom-endpoint').value = settings.customEndpoint);
-    document.getElementById('ai-analyze-btn').disabled = false;
+    document.getElementById('ai-analyze-top-btn').disabled = false;
   }
 
   row.querySelectorAll('.ai-prov-btn').forEach(btn => {
@@ -1088,7 +1095,7 @@ function persistAI() {
     apiKey: key
   };
   saveAISettings(settings);
-  document.getElementById('ai-analyze-btn').disabled = !settings.provider || !settings.apiKey;
+  document.getElementById('ai-analyze-top-btn').disabled = !settings.provider || !settings.apiKey;
 }
 
 async function testAIConnection() {
@@ -1099,7 +1106,7 @@ async function testAIConnection() {
   try {
     await callLLM('Reply with OK', 'Hi', 10);
     statusEl.textContent = '✅ Connected!'; statusEl.className = 'ai-status ok';
-    document.getElementById('ai-analyze-btn').disabled = false;
+    document.getElementById('ai-analyze-top-btn').disabled = false;
   } catch(e) {
     statusEl.textContent = '❌ ' + (e.message || 'Connection failed'); statusEl.className = 'ai-status fail';
   }
@@ -1234,18 +1241,18 @@ Respond in English. Be specific and actionable. Use markdown formatting.`;
 
 async function analyzeWrongBook() {
   const records = getWrongBook();
-  if (!records.length) { alert('Wrong book is empty, cannot analyze.'); return; }
-  const btn = document.getElementById('ai-analyze-btn');
+  if (!records.length) { alert('Mistake collection is empty, cannot analyze.'); return; }
+  const btn = document.getElementById('ai-analyze-top-btn');
   const resultDiv = document.getElementById('ai-result');
+  const overlay = document.getElementById('ai-result-overlay');
   btn.disabled = true; btn.textContent = '🧠 Analyzing...';
-  resultDiv.style.display = 'block';
+  overlay.style.display = 'block';
   resultDiv.innerHTML = '<em>Loading images and analyzing...</em>';
 
   try {
-    // Build content parts with up to 20 wrong question images
     const parts = [];
-    const sample = records.slice(0, 20); // Limit to avoid token overflow
-    parts.push({ type: 'text', text: `我有 ${records.length} 道错题，here are ${sample.length} of them with correct answers. Analyze my weak points：\n\n` });
+    const sample = records.slice(0, 20);
+    parts.push({ type: 'text', text: `I have ${records.length} wrong answers, here are ${sample.length} of them with correct answers. Analyze my weak points:\n\n` });
 
     for (let i = 0; i < sample.length; i++) {
       const r = sample[i];
@@ -1257,7 +1264,7 @@ async function analyzeWrongBook() {
     parts.push({ type: 'text', text: '\nPlease provide detailed analysis and study recommendations.' });
 
     const result = await callLLMWithImages(IG_BIO_PROMPT, parts, 4096);
-    resultDiv.innerHTML = '<h3>📊 AI Analysis Result</h3>' + result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    resultDiv.innerHTML = '<h3 style="font-weight:800;color:#92400e;margin-bottom:8px;">📊 AI Analysis Result</h3>' + result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
   } catch(e) {
     resultDiv.innerHTML = '<span style="color:red">Analysis failed: ' + escapeHtml(e.message) + '</span>';
   }
@@ -1282,7 +1289,6 @@ document.getElementById('ai-settings-toggle').onclick = () => {
   document.body.appendChild(overlay);
 };
 document.getElementById('ai-test-btn').onclick = testAIConnection;
-document.getElementById('ai-analyze-btn').onclick = analyzeWrongBook;
 initAIProviderUI();
 
 // === Demo Analysis ===
@@ -1371,13 +1377,25 @@ Based on the distribution of mistakes, here are the areas you need to focus on m
 - Recommended: Use this Quiz tool daily for 30 questions, prioritizing weak chapters`;
 
 document.getElementById('ai-demo-btn').onclick = () => {
-  // Open wrong book with demo data
-  openWrongBook();
   const resultDiv = document.getElementById('ai-result');
-  resultDiv.style.display = 'block';
+  document.getElementById('ai-result-overlay').style.display = 'block';
   resultDiv.innerHTML = '<h3 style="font-weight:800;color:#92400e;margin-bottom:8px;">📊 AI Analysis Result</h3>' +
     '<div style="margin-bottom:12px;padding:8px 14px;border-radius:10px;background:#fef3c7;border:1px solid #fde68a;font-size:13px;color:#92400e;font-weight:600;">🎬 This is a demo showing the AI analysis output. Configure an API Key to analyze your real mistakes.</div>' +
     IG_DEMO_ANALYSIS.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+};
+
+document.getElementById('ai-result-close').onclick = () => { document.getElementById('ai-result-overlay').style.display = 'none'; };
+document.getElementById('ai-result-overlay').onclick = (e) => { if (e.target.id === 'ai-result-overlay') e.target.style.display = 'none'; };
+
+// Wire up top analyze button
+document.getElementById('ai-analyze-top-btn').onclick = analyzeWrongBook;
+
+// Keep analyze button in sync with API settings
+const origPersistAI = persistAI;
+persistAI = function() {
+  origPersistAI();
+  const s = loadAISettings();
+  document.getElementById('ai-analyze-top-btn').disabled = !s.provider || !s.apiKey;
 };
 
 </script>
