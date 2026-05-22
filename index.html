@@ -152,6 +152,7 @@ body > * { position: relative; z-index: 1; }
     <div class="fixed-btns">
         <button type="button" id="wrong-book-btn">错题本</button>
         <button type="button" id="ai-settings-toggle" title="配置 AI API Key，用于分析错题的知识薄弱点和复习建议">🔑 API Key 设置</button>
+        <button type="button" id="ai-demo-btn" title="查看 AI 分析功能的演示效果" style="padding:10px 20px;border-radius:14px;border:none;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(146,64,14,0.25);transition:all 0.25s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(146,64,14,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(146,64,14,0.25)'">🎬 Demo</button>
     </div>
 
     <div id="wrong-book-overlay" role="dialog" aria-modal="true" aria-labelledby="wrong-book-title" aria-hidden="true">
@@ -1190,6 +1191,101 @@ document.getElementById('ai-settings-toggle').onclick = () => {
 document.getElementById('ai-test-btn').onclick = testAIConnection;
 document.getElementById('ai-analyze-btn').onclick = analyzeWrongBook;
 initAIProviderUI();
+
+// === Demo Analysis ===
+const IG_DEMO_ANALYSIS = `📊 **AI 错题分析结果（Demo 演示）**
+
+本次分析基于 15 道错题，涵盖 5 个章节。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**1. 📌 薄弱知识点识别**
+
+根据错题分布，以下是你最需要关注的知识领域（按优先级排序）：
+
+| 优先级 | 章节 | 错题数 | 薄弱程度 |
+|--------|------|--------|----------|
+| ⭐⭐⭐ | Ch17 遗传与变异 | 5 题 | 🔴 严重薄弱 |
+| ⭐⭐⭐ | Ch13 协调与反应 | 3 题 | 🔴 明显薄弱 |
+| ⭐⭐ | Ch3 物质进出细胞 | 3 题 | 🟡 需要巩固 |
+| ⭐⭐ | Ch10 疾病与免疫 | 2 题 | 🟡 需要巩固 |
+| ⭐ | Ch5 酶 | 2 题 | 🟢 轻微不足 |
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**2. 🔍 错误模式分析**
+
+**模式 A：遗传图解理解偏差**（Ch17，占错误的 33%）
+- 常混淆显性/隐性性状的表达条件
+- 对纯合子（homozygous）与杂合子（heterozygous）的基因型判断易出错
+- 遗传概率计算（Punnett square）经常漏算情况
+
+**模式 B：实验图表解读薄弱**（Ch3 + Ch5，占错误的 33%）
+- 渗透作用实验中，对水分流动方向判断错误
+- 酶活性曲线（温度/pH）的横纵轴含义混淆
+- 对"controls"和"variables"的理解不够清晰
+
+**模式 C：概念记忆不牢固**（Ch13 + Ch10，占错误的 33%）
+- 神经元和突触的结构名称容易混淆
+- 抗原（antigen）与抗体（antibody）的区别记不清
+- B细胞和T细胞的功能容易搞混
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**3. 📋 针对性复习计划**
+
+**Week 1 — 遗传与变异（最高优先级）**
+- Day 1-2：复习等位基因、显隐性关系，做 20 道基因型判断题
+- Day 3-4：练习 Punnett square，重点练 dihybrid cross
+- Day 5：做一套完整的遗传章节测试
+
+**Week 2 — 协调与反应 + 物质运输**
+- Day 1-2：画神经元结构图，标注 synapse、neurotransmitter
+- Day 3-4：做渗透作用和主动运输对比题
+- Day 5：综合练习
+
+**Week 3 — 疾病免疫 + 酶**
+- Day 1-2：画免疫反应流程图（antigen → B cell → antibody）
+- Day 3：酶的 lock-and-key 模型复述
+- Day 4-5：综合模拟测试
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**4. 💡 核心概念强化**
+
+**遗传学核心：**
+- dominant（显性）≠ always expressed（显性基因只需一个拷贝就能表达）
+- phenotype（表现型）= genotype（基因型）+ environment（环境）
+- sex-linked inheritance（伴性遗传）：基因在X染色体上，男性只有一个等位基因
+
+**细胞运输核心：**
+- Diffusion（扩散）：高浓度 → 低浓度，不需要能量
+- Osmosis（渗透）：水分子的扩散，通过半透膜
+- Active transport（主动运输）：低 → 高，需要 ATP 和 carrier protein
+
+**免疫核心：**
+- Antigen = 识别标签（在病原体表面）
+- Antibody = 免疫武器（由 B细胞/浆细胞产生）
+- Memory cells = 免疫记忆（二次免疫更快更强）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**5. 🎯 练习建议**
+
+- 遗传题：多练 Cambridge 官方 past paper 的 Q33-Q40（遗传大题区域）
+- 图表题：重点练习带 graph 的选择题，学会先看轴标签再看曲线
+- 概念辨析：制作 flashcard 对比易混概念（antigen vs antibody, diffusion vs osmosis, B cell vs T cell）
+- 建议每天用这个 Quiz 工具做 30 题，优先选薄弱章节`;
+
+document.getElementById('ai-demo-btn').onclick = () => {
+  // Open wrong book with demo data
+  openWrongBook();
+  const resultDiv = document.getElementById('ai-result');
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = '<h3 style="font-weight:800;color:#92400e;margin-bottom:8px;">📊 AI 分析结果</h3>' +
+    '<div style="margin-bottom:12px;padding:8px 14px;border-radius:10px;background:#fef3c7;border:1px solid #fde68a;font-size:13px;color:#92400e;font-weight:600;">🎬 这是一段演示，展示 AI 分析功能的输出效果。配置 API Key 后可对真实错题进行分析。</div>' +
+    IG_DEMO_ANALYSIS.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+};
 
 </script>
 </body>
