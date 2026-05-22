@@ -43,47 +43,6 @@
         .score-display .correct-count { color: #155724; }
         .score-display .wrong-count { color: #721c24; }
         .score-display .total-count { color: #007bff; }
-        #admin-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 4000;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        #admin-panel {
-            background: #fff;
-            border-radius: 14px;
-            padding: 24px 28px;
-            max-width: 360px;
-            width: 100%;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        #admin-panel button {
-            display: block;
-            width: 100%;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid #d1d8e0;
-            background: #f8f9fa;
-            font-family: inherit;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        #admin-panel button:hover { background: #eef2f7; }
-        #admin-panel #toggle-answer-test-btn.is-on {
-            background: #e8f5e9;
-            border-color: #43a047;
-            color: #1b5e20;
-        }
-        #admin-panel #toggle-answer-test-btn.is-on:hover {
             background: #c8e6c9;
             border-color: #2e7d32;
         }
@@ -300,11 +259,6 @@
         </div>
     </div>
 
-    <div id="admin-overlay" role="dialog" aria-modal="true" aria-label="Admin" aria-hidden="true">
-        <div id="admin-panel">
-            <button type="button" id="toggle-answer-test-btn">All Answers Correct: OFF</button>
-            <button type="button" id="admin-close">Close</button>
-        </div>
     </div>
 
     <h1>🧬 IG Biology Quiz</h1>
@@ -743,7 +697,7 @@ function handleAnswer(letter, clickedBtn) {
     isAnswering = false;
 
     const qItem = currentQuestionItem;
-    const correct = testAllAnswersCorrect ? true : (letter === qItem.a);
+    const correct = letter === qItem.a;
 
     // Disable all buttons and highlight
     const allBtns = document.querySelectorAll('.option-btn');
@@ -891,24 +845,7 @@ function clearAllWrongBook() {
     saveWrongBook([]); renderWrongBook();
 }
 
-// === Admin ===
-let testAllAnswersCorrect = (function () {
-    try { return localStorage.getItem('allAnswersCorrectMode') === 'true'; } catch (e) { return false; }
-})();
 
-function openAdminPanel() {
-    document.getElementById('admin-overlay').style.display = 'flex';
-    document.getElementById('admin-overlay').setAttribute('aria-hidden', 'false');
-}
-function closeAdminPanel() {
-    document.getElementById('admin-overlay').style.display = 'none';
-    document.getElementById('admin-overlay').setAttribute('aria-hidden', 'true');
-}
-
-function updateAnswerTestToggleButton() {
-    const btn = document.getElementById('toggle-answer-test-btn');
-    btn.textContent = testAllAnswersCorrect ? 'All Answers Correct: ON' : 'All Answers Correct: OFF';
-    btn.classList.toggle('is-on', testAllAnswersCorrect);
 }
 
 // === Event bindings ===
@@ -921,15 +858,7 @@ document.getElementById('wrong-book-clear-all').onclick = clearAllWrongBook;
 document.getElementById('wrong-book-close').onclick = closeWrongBook;
 document.getElementById('wrong-book-panel').addEventListener('click', (e) => e.stopPropagation());
 document.getElementById('wrong-book-overlay').addEventListener('click', closeWrongBook);
-document.getElementById('toggle-answer-test-btn').onclick = function () {
-    testAllAnswersCorrect = !testAllAnswersCorrect;
-    try { localStorage.setItem('allAnswersCorrectMode', String(testAllAnswersCorrect)); } catch (e) {}
-    updateAnswerTestToggleButton();
 };
-updateAnswerTestToggleButton();
-document.getElementById('admin-panel').addEventListener('click', (e) => e.stopPropagation());
-document.getElementById('admin-overlay').addEventListener('click', closeAdminPanel);
-document.getElementById('admin-close').onclick = closeAdminPanel;
 
 // === Restore progress on boot ===
 (function bootQuiz() {
@@ -959,7 +888,6 @@ document.addEventListener('keydown', function (e) {
     if (wb && wb.style.display === 'flex') { closeWrongBook(); return; }
     const ch = document.getElementById('chapter-modal');
     if (ch && ch.style.display === 'flex') { closeChapterModal(); return; }
-    const overlay = document.getElementById('admin-overlay');
     if (overlay && overlay.style.display === 'flex') closeAdminPanel();
 });
 
