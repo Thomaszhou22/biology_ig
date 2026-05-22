@@ -259,7 +259,6 @@
         </div>
     </div>
 
-    </div>
 
     <h1>🧬 IG Biology Quiz</h1>
 
@@ -845,8 +844,7 @@ function clearAllWrongBook() {
     saveWrongBook([]); renderWrongBook();
 }
 
-
-}
+// === Admin ===
 
 // === Event bindings ===
 document.getElementById('start-game-btn2').onclick = confirmChapterSelection;
@@ -858,8 +856,6 @@ document.getElementById('wrong-book-clear-all').onclick = clearAllWrongBook;
 document.getElementById('wrong-book-close').onclick = closeWrongBook;
 document.getElementById('wrong-book-panel').addEventListener('click', (e) => e.stopPropagation());
 document.getElementById('wrong-book-overlay').addEventListener('click', closeWrongBook);
-};
-
 // === Restore progress on boot ===
 (function bootQuiz() {
     const saved = loadProgress();
@@ -888,7 +884,6 @@ document.addEventListener('keydown', function (e) {
     if (wb && wb.style.display === 'flex') { closeWrongBook(); return; }
     const ch = document.getElementById('chapter-modal');
     if (ch && ch.style.display === 'flex') { closeChapterModal(); return; }
-    if (overlay && overlay.style.display === 'flex') closeAdminPanel();
 });
 
 </script>
