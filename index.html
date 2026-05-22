@@ -119,6 +119,27 @@ body > * { position: relative; z-index: 1; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.5); }
+/* AI Analysis */
+#ai-settings-toggle { padding: 8px 16px; border-radius: 10px; border: 1px solid #ece4d4; background: #faf6ee; font-size: 13px; font-weight: 700; cursor: pointer; color: #92400e; transition: all 0.2s; }
+#ai-settings-toggle:hover { background: #fef3c7; border-color: #f59e0b; }
+#ai-settings-panel { display: none; margin: 16px 0; padding: 16px; border: 1px solid #ece4d4; border-radius: 14px; background: #faf6ee; }
+#ai-settings-panel.open { display: block; }
+.ai-prov-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ai-prov-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #e0d8c8; background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; color: #78716c; }
+.ai-prov-btn:hover { border-color: #f59e0b; color: #92400e; }
+.ai-prov-btn.active { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border-color: #d97706; }
+.ai-model-select { width: 100%; padding: 8px 12px; border: 1px solid #e0d8c8; border-radius: 10px; font-size: 13px; background: #fff; margin-bottom: 8px; }
+.ai-key-input { width: 100%; padding: 8px 12px; border: 1px solid #e0d8c8; border-radius: 10px; font-size: 13px; background: #fff; margin-bottom: 8px; font-family: monospace; }
+.ai-key-input:focus, .ai-model-select:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+.ai-status { font-size: 11px; margin-bottom: 8px; font-weight: 600; }
+.ai-status.ok { color: #059669; }
+.ai-status.fail { color: #dc2626; }
+.ai-status.testing { color: #d97706; }
+#ai-analyze-btn { width: 100%; padding: 14px; border: none; border-radius: 14px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.25s; box-shadow: 0 2px 8px rgba(245,158,11,0.25); margin-top: 12px; }
+#ai-analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
+#ai-analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+#ai-result { display: none; margin-top: 16px; padding: 16px; border: 1px solid #ece4d4; border-radius: 14px; background: #fff; font-size: 14px; line-height: 1.7; color: #334155; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+#ai-result h3 { font-weight: 800; color: #92400e; margin-bottom: 8px; }
     </style>
 </head>
 <body>
@@ -132,11 +153,23 @@ body > * { position: relative; z-index: 1; }
     <div id="wrong-book-overlay" role="dialog" aria-modal="true" aria-labelledby="wrong-book-title" aria-hidden="true">
         <div id="wrong-book-panel">
             <h2 id="wrong-book-title">错题本</h2>
+            <div style="text-align:center;margin-bottom:12px;">
+                <button type="button" id="ai-settings-toggle">⚙️ AI 分析设置</button>
+            </div>
+            <div id="ai-settings-panel">
+                <div class="ai-prov-row" id="ai-prov-row"></div>
+                <select class="ai-model-select" id="ai-model-select"><option>选择模型</option></select>
+                <input class="ai-key-input" id="ai-key-input" type="password" placeholder="输入 API Key...">
+                <div class="ai-status" id="ai-status"></div>
+                <button type="button" id="ai-test-btn" style="padding:6px 16px;border-radius:8px;border:1px solid #e0d8c8;background:#fff;font-size:12px;font-weight:600;cursor:pointer;">测试连接</button>
+            </div>
             <div id="wrong-book-list"></div>
             <div class="wrong-book-footer-actions">
+                <button type="button" id="ai-analyze-btn" disabled>🧠 AI 分析错题</button>
                 <button type="button" id="wrong-book-clear-all">清空全部</button>
                 <button type="button" id="wrong-book-close">关闭</button>
             </div>
+            <div id="ai-result"></div>
         </div>
     </div>
 
@@ -890,6 +923,259 @@ document.addEventListener('keydown', function (e) {
     const ch = document.getElementById('chapter-modal');
     if (ch && ch.style.display === 'flex') { closeChapterModal(); return; }
 });
+
+// === AI Analysis Feature ===
+const AI_PROVIDERS = [
+  { id: 'openai', name: 'OpenAI', models: ['gpt-4o-mini','gpt-4o','gpt-4.1-mini','gpt-4.1'], defaultModel: 'gpt-4o-mini', endpoint: '' },
+  { id: 'anthropic', name: 'Anthropic', models: ['claude-sonnet-4-20250514','claude-haiku-4-20250514'], defaultModel: 'claude-sonnet-4-20250514', endpoint: '' },
+  { id: 'google', name: 'Google Gemini', models: ['gemini-2.0-flash','gemini-2.5-flash','gemini-2.5-pro'], defaultModel: 'gemini-2.0-flash', endpoint: '' },
+  { id: 'deepseek', name: 'DeepSeek', models: ['deepseek-chat','deepseek-reasoner'], defaultModel: 'deepseek-chat', endpoint: 'https://api.deepseek.com/v1/chat/completions' },
+  { id: 'custom', name: 'Custom (OpenAI)', models: [], defaultModel: 'custom-model', endpoint: '' },
+];
+const AI_SETTINGS_KEY = 'ig-quiz-ai-settings';
+
+function loadAISettings() {
+  try { return JSON.parse(localStorage.getItem(AI_SETTINGS_KEY) || '{}'); } catch { return {}; }
+}
+function saveAISettings(s) {
+  try { localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(s)); } catch(e) {}
+}
+
+function initAIProviderUI() {
+  const row = document.getElementById('ai-prov-row');
+  row.innerHTML = AI_PROVIDERS.map(p =>
+    `<button class="ai-prov-btn" data-prov="${p.id}">${p.name}</button>`
+  ).join('');
+  const settings = loadAISettings();
+  const sel = document.getElementById('ai-model-select');
+  const keyInput = document.getElementById('ai-key-input');
+
+  // Restore
+  if (settings.provider) {
+    const btn = row.querySelector(`[data-prov="${settings.provider}"]`);
+    if (btn) btn.classList.add('active');
+    updateModelOptions(settings.provider);
+    if (settings.model) sel.value = settings.model;
+    if (settings.apiKey) keyInput.value = settings.apiKey;
+    if (settings.customEndpoint) document.getElementById('ai-custom-endpoint') && (document.getElementById('ai-custom-endpoint').value = settings.customEndpoint);
+    document.getElementById('ai-analyze-btn').disabled = false;
+  }
+
+  row.querySelectorAll('.ai-prov-btn').forEach(btn => {
+    btn.onclick = () => {
+      row.querySelectorAll('.ai-prov-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const pid = btn.dataset.prov;
+      updateModelOptions(pid);
+      persistAI();
+    };
+  });
+  sel.onchange = persistAI;
+  keyInput.oninput = persistAI;
+}
+
+function updateModelOptions(provId) {
+  const p = AI_PROVIDERS.find(x => x.id === provId);
+  const sel = document.getElementById('ai-model-select');
+  if (!p) { sel.innerHTML = '<option>选择模型</option>'; return; }
+  sel.innerHTML = p.models.map(m => `<option value="${m}">${m}</option>`).join('');
+  sel.value = p.defaultModel;
+}
+
+function persistAI() {
+  const active = document.querySelector('.ai-prov-btn.active');
+  const sel = document.getElementById('ai-model-select');
+  const key = document.getElementById('ai-key-input').value.trim();
+  const settings = {
+    provider: active ? active.dataset.prov : '',
+    model: sel.value,
+    apiKey: key
+  };
+  saveAISettings(settings);
+  document.getElementById('ai-analyze-btn').disabled = !settings.provider || !settings.apiKey;
+}
+
+async function testAIConnection() {
+  const s = loadAISettings();
+  if (!s.provider || !s.apiKey) return;
+  const statusEl = document.getElementById('ai-status');
+  statusEl.textContent = '测试中...'; statusEl.className = 'ai-status testing';
+  try {
+    await callLLM('Reply with OK', 'Hi', 10);
+    statusEl.textContent = '✅ 连接成功！'; statusEl.className = 'ai-status ok';
+    document.getElementById('ai-analyze-btn').disabled = false;
+  } catch(e) {
+    statusEl.textContent = '❌ ' + (e.message || '连接失败'); statusEl.className = 'ai-status fail';
+  }
+}
+
+async function callLLM(sys, usr, maxT) {
+  const s = loadAISettings();
+  if (!s.apiKey) throw new Error('No API Key');
+  const m = s.model || 'gpt-4o-mini';
+  if (s.provider === 'anthropic') {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': s.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: m, max_tokens: maxT, system: sys, messages: [{ role: 'user', content: usr }] })
+    });
+    const d = await r.json(); if (d.error) throw new Error(d.error.message); return d.content?.[0]?.text || '';
+  } else if (s.provider === 'google') {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${s.apiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ parts: [{ text: usr }] }], generationConfig: { temperature: 0.3, maxOutputTokens: maxT } })
+    });
+    const d = await r.json(); if (d.error) throw new Error(d.error.message); return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } else {
+    const endpoint = s.customEndpoint || 'https://api.openai.com/v1/chat/completions';
+    const r = await fetch(endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` },
+      body: JSON.stringify({ model: m, messages: [{ role: 'system', content: sys }, { role: 'user', content: usr }], temperature: 0.3, max_tokens: maxT })
+    });
+    const d = await r.json(); if (d.error) throw new Error(d.error.message); return d.choices?.[0]?.message?.content || '';
+  }
+}
+
+// Convert image URL to base64
+function imgUrlToBase64(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => reject(new Error('Image load failed: ' + url));
+    img.src = url;
+  });
+}
+
+async function callLLMWithImages(sys, textParts, maxT) {
+  const s = loadAISettings();
+  if (!s.apiKey) throw new Error('No API Key');
+  const m = s.model || 'gpt-4o-mini';
+
+  // Build content parts for vision
+  const contentParts = [];
+  for (const part of textParts) {
+    if (part.type === 'text') {
+      contentParts.push({ type: 'text', text: part.text });
+    } else if (part.type === 'image') {
+      try {
+        const b64 = await imgUrlToBase64(part.url);
+        const base64Data = b64.split(',')[1];
+        const mimeType = b64.split(';')[0].split(':')[1] || 'image/jpeg';
+
+        if (s.provider === 'google') {
+          contentParts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
+        } else if (s.provider === 'anthropic') {
+          contentParts.push({ type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } });
+        } else {
+          // OpenAI-compatible
+          contentParts.push({ type: 'image_url', image_url: { url: b64 } });
+        }
+      } catch(e) {
+        contentParts.push({ type: 'text', text: `[图片加载失败: ${part.url}]` });
+      }
+    }
+  }
+
+  if (s.provider === 'anthropic') {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': s.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: m, max_tokens: maxT, system: sys, messages: [{ role: 'user', content: contentParts }] })
+    });
+    const d = await r.json(); if (d.error) throw new Error(d.error.message); return d.content?.[0]?.text || '';
+  } else if (s.provider === 'google') {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${s.apiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ parts: contentParts }], generationConfig: { temperature: 0.3, maxOutputTokens: maxT } })
+    });
+    const d = await r.json(); if (d.error) throw new Error(d.error.message); return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } else {
+    const endpoint = s.customEndpoint || 'https://api.openai.com/v1/chat/completions';
+    const r = await fetch(endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` },
+      body: JSON.stringify({ model: m, messages: [{ role: 'system', content: sys }, { role: 'user', content: contentParts }], temperature: 0.3, max_tokens: maxT })
+    });
+    const d = await r.json(); if (d.error) throw new Error(d.error.message); return d.choices?.[0]?.message?.content || '';
+  }
+}
+
+const IG_BIO_PROMPT = `You are an expert Cambridge IGCSE Biology (0610) tutor. You have deep knowledge of all 21 chapters:
+- Characteristics & classification of living organisms
+- Organisation of the organism (cells, tissues, organs)
+- Movement into and out of cells (diffusion, osmosis, active transport)
+- Biological molecules (carbohydrates, proteins, lipids, DNA)
+- Enzymes
+- Plant nutrition (photosynthesis, leaf structure)
+- Human nutrition (digestive system, balanced diet)
+- Transport in plants (xylem, phloem, transpiration)
+- Transport in animals (heart, blood vessels, blood)
+- Diseases and immunity
+- Gas exchange in humans
+- Respiration
+- Excretion in humans (kidneys, liver)
+- Coordination and response (nervous system, hormones, sense organs)
+- Drugs
+- Reproduction (sexual, asexual, plant, human)
+- Inheritance (chromosomes, genes, DNA, mutations, genetic diagrams)
+- Variation and selection
+- Organisms and their environment (food chains, nutrient cycles)
+- Biotechnology and genetic engineering
+- Human influences on ecosystems
+
+The student has answered multiple-choice questions incorrectly. You will see images of these questions along with the correct answers.
+
+Analyze the wrong answers and provide:
+1. **Weak Knowledge Areas**: Identify specific topics/concepts the student struggles with
+2. **Error Pattern Analysis**: Are there recurring types of mistakes (e.g., confusing osmosis vs diffusion, misreading graphs, confusing mitosis vs meiosis)?
+3. **Targeted Study Plan**: List specific chapters and sub-topics to review, with priority ranking
+4. **Key Concepts to Reinforce**: Brief summaries of the misunderstood concepts
+5. **Practice Recommendations**: Suggest specific types of questions to practice more
+
+Respond in Chinese (中文). Be specific and actionable. Use markdown formatting.`;
+
+async function analyzeWrongBook() {
+  const records = getWrongBook();
+  if (!records.length) { alert('错题本为空，无法分析。'); return; }
+  const btn = document.getElementById('ai-analyze-btn');
+  const resultDiv = document.getElementById('ai-result');
+  btn.disabled = true; btn.textContent = '🧠 分析中...';
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = '<em>正在加载图片并分析...</em>';
+
+  try {
+    // Build content parts with up to 20 wrong question images
+    const parts = [];
+    const sample = records.slice(0, 20); // Limit to avoid token overflow
+    parts.push({ type: 'text', text: `我有 ${records.length} 道错题，以下是其中 ${sample.length} 道题的截图和正确答案。请分析我的知识薄弱点：\n\n` });
+
+    for (let i = 0; i < sample.length; i++) {
+      const r = sample[i];
+      parts.push({ type: 'text', text: `--- 第${i+1}题 (正确答案: ${r.answer}) ---` });
+      if (r.img) {
+        parts.push({ type: 'image', url: 'questions/' + r.question });
+      }
+    }
+    parts.push({ type: 'text', text: '\n请给出详细的知识点分析和复习建议。' });
+
+    const result = await callLLMWithImages(IG_BIO_PROMPT, parts, 4096);
+    resultDiv.innerHTML = '<h3>📊 AI 分析结果</h3>' + result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  } catch(e) {
+    resultDiv.innerHTML = '<span style="color:red">分析失败: ' + escapeHtml(e.message) + '</span>';
+  }
+  btn.disabled = false; btn.textContent = '🧠 AI 分析错题';
+}
+
+// Init AI UI
+document.getElementById('ai-settings-toggle').onclick = () => {
+  const p = document.getElementById('ai-settings-panel');
+  p.classList.toggle('open');
+};
+document.getElementById('ai-test-btn').onclick = testAIConnection;
+document.getElementById('ai-analyze-btn').onclick = analyzeWrongBook;
+initAIProviderUI();
 
 </script>
 </body>
