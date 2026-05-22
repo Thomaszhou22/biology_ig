@@ -426,23 +426,8 @@ function loadQuestionsFromChapters(chapterIds, maxCount) {
     deepQuestions = [];
     activeChapters = chapterIds;
 
-    // Build wrong-book stats for weighted selection
-    const wrongRecords = getWrongBook();
-    const wrongByQuestion = {}; // question path → count
-    const wrongByChapter = {};  // chapter id → count
-    for (const r of wrongRecords) {
-        const qPath = r.question || '';
-        wrongByQuestion[qPath] = (wrongByQuestion[qPath] || 0) + 1;
-        // Extract chapter id from path like "ch1/q01.jpg"
-        const chId = qPath.split('/')[0];
-        if (chapterIds.includes(chId)) {
-            wrongByChapter[chId] = (wrongByChapter[chId] || 0) + 1;
-        }
-    }
-    const totalWrongInChapters = Object.values(wrongByChapter).reduce((s, c) => s + c, 0) || 1;
-
     // Collect all candidate questions grouped by chapter
-    const chapterBuckets = {}; // chId → [questions]
+    const chapterBuckets = {};
     for (const ch of QUESTION_CHAPTERS) {
         if (!chapterIds.includes(ch.id)) continue;
         chapterBuckets[ch.id] = [];
@@ -451,91 +436,81 @@ function loadQuestionsFromChapters(chapterIds, maxCount) {
             const num = String(i).padStart(2, '0');
             const qPath = ch.id + '/q' + num + '.jpg';
             const ans = ch.answers ? ch.answers[i - 1] : null;
-            // Weight: questions wrong before get 3x weight, otherwise 1x
-            const qWeight = (wrongByQuestion[qPath] || 0) > 0 ? 3 : 1;
             chapterBuckets[ch.id].push({
                 q: qPath,
                 img: true,
                 a: ans ? ans.a : '?',
-                chapter: ch.name,
-                _weight: qWeight
+                chapter: ch.name
             });
         }
     }
 
-    // Calculate per-chapter allocation based on wrong ratios
-    // Base: equal share. Boost: proportional to wrong count.
     const totalQuestions = Object.values(chapterBuckets).reduce((s, arr) => s + arr.length, 0);
     const limit = maxCount > 0 ? Math.min(maxCount, totalQuestions) : totalQuestions;
 
-    // Weighted chapter allocation
-    const chapterAlloc = {}; // chId → how many questions to pick
-    let allocRemaining = limit;
-    const chIds = Object.keys(chapterBuckets);
-
-    if (totalWrongInChapters > 1) {
-        // Mix: 60% base (equal) + 40% wrong-proportional
-        const baseShare = limit * 0.6 / chIds.length;
-        let wrongBudget = limit * 0.4;
-        chIds.forEach(id => {
-            const wrongRatio = (wrongByChapter[id] || 0) / totalWrongInChapters;
-            const wrongAlloc = wrongBudget * wrongRatio;
-            chapterAlloc[id] = Math.round(baseShare + wrongAlloc);
-        });
-        // Normalize to exactly match limit
-        let allocTotal = Object.values(chapterAlloc).reduce((s, v) => s + v, 0);
-        const diff = allocTotal - limit;
-        if (diff !== 0) {
-            // Adjust largest allocation first
-            const sorted = chIds.slice().sort((a, b) => chapterAlloc[b] - chapterAlloc[a]);
-            let remaining = diff;
-            for (const id of sorted) {
-                if (remaining === 0) break;
-                const adjust = remaining > 0 ? -Math.min(remaining, Math.max(0, chapterAlloc[id] - 1)) : Math.min(-remaining, chapterBuckets[id].length - chapterAlloc[id]);
-                chapterAlloc[id] += adjust;
-                remaining -= adjust;
-            }
+    if (limit >= totalQuestions) {
+        // Load ALL questions — just combine and shuffle
+        for (const chId of Object.keys(chapterBuckets)) {
+            deepQuestions.push(...chapterBuckets[chId]);
         }
     } else {
-        // No wrong history, equal allocation
-        chIds.forEach(id => { chapterAlloc[id] = Math.ceil(limit / chIds.length); });
-        // Trim excess
-        let allocTotal = Object.values(chapterAlloc).reduce((s, v) => s + v, 0);
-        while (allocTotal > limit) {
-            for (const id of chIds) {
-                if (allocTotal <= limit) break;
-                if (chapterAlloc[id] > 0) { chapterAlloc[id]--; allocTotal--; }
+        // Weighted selection when user sets a limit
+        const wrongRecords = getWrongBook();
+        const wrongByQuestion = {};
+        const wrongByChapter = {};
+        for (const r of wrongRecords) {
+            const qPath = r.question || '';
+            wrongByQuestion[qPath] = (wrongByQuestion[qPath] || 0) + 1;
+            const chId = qPath.split('/')[0];
+            if (chapterBuckets[chId]) {
+                wrongByChapter[chId] = (wrongByChapter[chId] || 0) + 1;
             }
         }
-    }
+        const totalWrong = Object.values(wrongByChapter).reduce((s, c) => s + c, 0) || 0;
+        const chIds = Object.keys(chapterBuckets);
 
-    // Cap each chapter alloc to available questions
-    chIds.forEach(id => {
-        chapterAlloc[id] = Math.min(chapterAlloc[id], chapterBuckets[id].length);
-    });
+        // Chapter allocation: 60% equal + 40% wrong-proportional (if wrong records exist)
+        const chapterAlloc = {};
+        if (totalWrong > 0) {
+            const baseShare = limit * 0.6 / chIds.length;
+            const wrongBudget = limit * 0.4;
+            chIds.forEach(id => {
+                const wrongRatio = (wrongByChapter[id] || 0) / totalWrong;
+                chapterAlloc[id] = Math.round(baseShare + wrongBudget * wrongRatio);
+            });
+        } else {
+            chIds.forEach(id => { chapterAlloc[id] = Math.ceil(limit / chIds.length); });
+        }
 
-    // Pick questions per chapter using weighted random (no duplicates)
-    for (const chId of chIds) {
-        const pool = chapterBuckets[chId].slice(); // copy
-        let needed = chapterAlloc[chId];
+        // Normalize allocation to exactly match limit
+        let allocTotal = Object.values(chapterAlloc).reduce((s, v) => s + v, 0);
+        const chIdsSorted = chIds.slice().sort((a, b) => (chapterBuckets[b].length - chapterAlloc[b]) - (chapterBuckets[a].length - chapterAlloc[a]));
+        let diff = limit - allocTotal;
+        for (const id of chIdsSorted) {
+            if (diff === 0) break;
+            const headroom = chapterBuckets[id].length - chapterAlloc[id];
+            if (diff > 0) { chapterAlloc[id] += Math.min(diff, headroom); diff -= Math.min(diff, headroom); }
+            else if (diff < 0 && chapterAlloc[id] > 0) { const cut = Math.min(-diff, chapterAlloc[id]); chapterAlloc[id] -= cut; diff += cut; }
+        }
 
-        // Weighted shuffle: sort by weight descending with randomness
-        // Use weighted random sampling without replacement
-        const picked = [];
-        const remaining = pool.slice();
-        while (picked.length < needed && remaining.length > 0) {
-            const totalW = remaining.reduce((s, q) => s + q._weight, 0);
-            let r = Math.random() * totalW;
-            for (let i = 0; i < remaining.length; i++) {
-                r -= remaining[i]._weight;
-                if (r <= 0) {
-                    picked.push(remaining[i]);
-                    remaining.splice(i, 1);
-                    break;
+        // Cap and pick questions per chapter using weighted random
+        for (const chId of chIds) {
+            const needed = Math.min(chapterAlloc[chId] || 0, chapterBuckets[chId].length);
+            const pool = chapterBuckets[chId];
+            // Give 3x weight to previously-wrong questions
+            const weighted = pool.map(q => ({ ...q, _w: (wrongByQuestion[q.q] || 0) > 0 ? 3 : 1 }));
+            const picked = [];
+            const remaining = weighted.slice();
+            while (picked.length < needed && remaining.length > 0) {
+                const totalW = remaining.reduce((s, q) => s + q._w, 0);
+                let r = Math.random() * totalW;
+                for (let i = 0; i < remaining.length; i++) {
+                    r -= remaining[i]._w;
+                    if (r <= 0) { picked.push(remaining[i]); remaining.splice(i, 1); break; }
                 }
             }
+            deepQuestions.push(...picked);
         }
-        deepQuestions.push(...picked);
     }
 
     // Final shuffle (mix chapters together)
