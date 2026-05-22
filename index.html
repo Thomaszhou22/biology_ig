@@ -599,6 +599,7 @@ function renderChapterList() {
         });
         item.querySelector('input[type=checkbox]').addEventListener('change', (e) => {
             item.classList.toggle('selected', e.target.checked);
+            if (!e.target.checked) item.querySelector('.ch-q-input').value = '';
             updateChapterCountInfo();
         });
         // Per-chapter count input — auto-check when value > 0
