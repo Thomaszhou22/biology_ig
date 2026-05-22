@@ -88,7 +88,10 @@ body > * { position: relative; z-index: 1; }
 .chapter-item.selected { background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(59,130,246,0.06)); border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
 .chapter-item input { width: 18px; height: 18px; accent-color: #c4943a; cursor: pointer; }
 .chapter-item .ch-name { flex: 1; font-weight: 600; font-size: 0.92rem; color: #334155; }
-.chapter-item .ch-count { font-size: 0.78rem; color: #a8a29e; font-weight: 600; background: rgba(99,102,241,0.06); padding: 3px 10px; border-radius: 20px; }
+.chapter-item .ch-count { font-size: 0.78rem; color: #a8a29e; font-weight: 600; background: rgba(99,102,241,0.06); padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.chapter-item .ch-q-input { width: 52px; padding: 4px 6px; border: 1.5px solid rgba(180,130,70,0.2); border-radius: 8px; font-size: 0.78rem; font-family: inherit; text-align: center; background: #fffbf5; transition: border-color 0.2s; }
+.chapter-item .ch-q-input:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+.chapter-item .ch-q-input::placeholder { color: #c4b89a; font-size: 0.72rem; }
 #question-count-field { margin-bottom: 10px; }
 #question-count-field label { display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 4px; font-weight: 600; }
 #q-count-input { width: 100%; padding: 10px 14px; border: 2px solid rgba(180,130,70,0.12); border-radius: 12px; font-size: 14px; font-family: inherit; transition: border-color 0.2s; }
@@ -520,6 +523,56 @@ function loadQuestionsFromChapters(chapterIds, maxCount) {
     }
 }
 
+function loadQuestionsWithPerChapterLimits(chapterIds, perChapterLimits) {
+    deepQuestions = [];
+    activeChapters = chapterIds;
+
+    // Build wrong-book stats for weighted within-chapter selection
+    const wrongRecords = getWrongBook();
+    const wrongByQuestion = {};
+    for (const r of wrongRecords) {
+        const qPath = r.question || '';
+        wrongByQuestion[qPath] = (wrongByQuestion[qPath] || 0) + 1;
+    }
+
+    for (const ch of QUESTION_CHAPTERS) {
+        if (!chapterIds.includes(ch.id)) continue;
+        const limit = perChapterLimits[ch.id] || ch.count || 0;
+        const pool = [];
+        const count = ch.count || 0;
+        for (let i = 1; i <= count; i++) {
+            const num = String(i).padStart(2, '0');
+            const qPath = ch.id + '/q' + num + '.jpg';
+            const ans = ch.answers ? ch.answers[i - 1] : null;
+            const isWrong = (wrongByQuestion[qPath] || 0) > 0;
+            pool.push({ q: qPath, img: true, a: ans ? ans.a : '?', chapter: ch.name, _w: isWrong ? 3 : 1 });
+        }
+
+        // If limit >= pool size, take all; otherwise weighted sample
+        if (limit >= pool.length) {
+            deepQuestions.push(...pool);
+        } else {
+            const picked = [];
+            const remaining = pool.slice();
+            while (picked.length < limit && remaining.length > 0) {
+                const totalW = remaining.reduce((s, q) => s + q._w, 0);
+                let r = Math.random() * totalW;
+                for (let i = 0; i < remaining.length; i++) {
+                    r -= remaining[i]._w;
+                    if (r <= 0) { picked.push(remaining[i]); remaining.splice(i, 1); break; }
+                }
+            }
+            deepQuestions.push(...picked);
+        }
+    }
+
+    // Final shuffle
+    for (let i = deepQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deepQuestions[i], deepQuestions[j]] = [deepQuestions[j], deepQuestions[i]];
+    }
+}
+
 // === Chapter selection UI ===
 function renderChapterList() {
     const container = document.getElementById('chapter-list');
@@ -532,6 +585,7 @@ function renderChapterList() {
         return `<div class="chapter-item" data-id="${ch.id}">
             <input type="checkbox" id="ch-${ch.id}" value="${ch.id}">
             <span class="ch-name">${ch.name}</span>
+            <input class="ch-q-input" type="number" min="1" max="${ch.count || 999}" placeholder="${ch.count || 0}" data-chapter="${ch.id}" title="Set question count for this chapter">
             <span class="ch-count">${ch.count || 0} Q</span>
         </div>`;
     }).join('');
@@ -547,6 +601,10 @@ function renderChapterList() {
             item.classList.toggle('selected', e.target.checked);
             updateChapterCountInfo();
         });
+        // Per-chapter count input
+        const chInput = item.querySelector('.ch-q-input');
+        chInput.addEventListener('input', () => updateChapterCountInfo());
+        chInput.addEventListener('click', (e) => e.stopPropagation());
     });
     document.getElementById('sel-all-chapters').onclick = () => {
         container.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = true; });
@@ -561,21 +619,50 @@ function renderChapterList() {
     updateChapterCountInfo();
 }
 
+function hasPerChapterCounts() {
+    return !!document.querySelector('.ch-q-input[value]');
+}
+
 function updateChapterCountInfo() {
     const checked = document.querySelectorAll('#chapter-list input[type=checkbox]:checked');
-    let total = 0;
-    checked.forEach(cb => {
-        const ch = QUESTION_CHAPTERS.find(c => c.id === cb.value);
-        if (ch) total += (ch.count || 0);
-    });
     const info = document.getElementById('question-count-info');
     const countInput = document.getElementById('q-count-input');
-    if (total === 0) {
-        info.textContent = 'Please select at least one chapter';
+
+    // Check if any per-chapter input has a value
+    let perChapterTotal = 0;
+    let hasAnyPerChapter = false;
+    checked.forEach(cb => {
+        const chInput = document.querySelector(`.ch-q-input[data-chapter="${cb.value}"]`);
+        if (chInput && chInput.value) {
+            hasAnyPerChapter = true;
+            perChapterTotal += parseInt(chInput.value) || 0;
+        }
+    });
+
+    if (hasAnyPerChapter) {
+        // Per-chapter counts are set — total input becomes read-only
+        countInput.value = perChapterTotal;
+        countInput.readOnly = true;
+        countInput.style.opacity = '0.6';
+        countInput.style.background = '#f5f0e8';
+        info.textContent = `Per-chapter: ${perChapterTotal} questions total (auto-calculated)`;
     } else {
-        info.textContent = `${total} questions selected, leave empty for all`;
+        // No per-chapter counts — manual input is available
+        countInput.readOnly = false;
+        countInput.style.opacity = '1';
+        countInput.style.background = '';
+        let total = 0;
+        checked.forEach(cb => {
+            const ch = QUESTION_CHAPTERS.find(c => c.id === cb.value);
+            if (ch) total += (ch.count || 0);
+        });
+        if (total === 0) {
+            info.textContent = 'Please select at least one chapter';
+        } else {
+            info.textContent = `${total} questions selected, leave empty for all`;
+        }
+        countInput.max = total || 999;
     }
-    countInput.max = total || 999;
 }
 
 function openChapterModal() {
@@ -598,22 +685,45 @@ function confirmChapterSelection() {
         return;
     }
     const chapterIds = Array.from(checked).map(cb => cb.value);
+
+    // Check for per-chapter counts
+    const perChapterLimits = {};
+    let hasAnyPerChapter = false;
+    chapterIds.forEach(id => {
+        const chInput = document.querySelector(`.ch-q-input[data-chapter="${id}"]`);
+        if (chInput && chInput.value) {
+            const v = parseInt(chInput.value);
+            if (v > 0) {
+                const ch = QUESTION_CHAPTERS.find(c => c.id === id);
+                perChapterLimits[id] = Math.min(v, ch ? ch.count : v);
+                hasAnyPerChapter = true;
+            }
+        }
+    });
+
     const maxCount = parseInt(document.getElementById('q-count-input').value) || 0;
     if (maxCount < 0) {
         w.textContent = 'Count cannot be negative';
         return;
     }
-    let total = 0;
-    chapterIds.forEach(id => {
-        const ch = QUESTION_CHAPTERS.find(c => c.id === id);
-        if (ch) total += (ch.count || 0);
-    });
-    if (maxCount > total) {
-        w.textContent = `Count (${maxCount}) exceeds total available (${total})`;
-        return;
+
+    if (hasAnyPerChapter) {
+        // Use per-chapter limits
+        loadQuestionsWithPerChapterLimits(chapterIds, perChapterLimits);
+    } else {
+        // Use global limit
+        let total = 0;
+        chapterIds.forEach(id => {
+            const ch = QUESTION_CHAPTERS.find(c => c.id === id);
+            if (ch) total += (ch.count || 0);
+        });
+        if (maxCount > total) {
+            w.textContent = `Count (${maxCount}) exceeds total available (${total})`;
+            return;
+        }
+        selectedQuestionCount = maxCount;
+        loadQuestionsFromChapters(chapterIds, maxCount);
     }
-    selectedQuestionCount = maxCount;
-    loadQuestionsFromChapters(chapterIds, maxCount);
     w.textContent = '';
     closeChapterModal();
     preloadImagesAndStart();
