@@ -861,7 +861,7 @@ function renderWrongBook() {
         container.innerHTML = '<p>No mistakes yet.</p>';
         return;
     }
-    container.innerHTML = '<div class="wrong-book-section"><div class="wrong-book-section-title">全部错题<span class="wrong-book-count">共 ' + records.length + ' 题</span></div><div class="wrong-book-section-items">' +
+    container.innerHTML = '<div class="wrong-book-section"><div class="wrong-book-section-title">All Mistakes<span class="wrong-book-count">Total: ' + records.length + ' mistakes</span></div><div class="wrong-book-section-items">' +
         records.map((item, i) => `
       <div class="wrong-book-item">
         <div class="wrong-book-meta"><strong>#${i + 1}</strong></div>
@@ -1166,7 +1166,7 @@ async function analyzeWrongBook() {
     const result = await callLLMWithImages(IG_BIO_PROMPT, parts, 4096);
     resultDiv.innerHTML = '<h3>📊 AI Analysis Result</h3>' + result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
   } catch(e) {
-    resultDiv.innerHTML = '<span style="color:red">分析失败: ' + escapeHtml(e.message) + '</span>';
+    resultDiv.innerHTML = '<span style="color:red">Analysis failed: ' + escapeHtml(e.message) + '</span>';
   }
   btn.disabled = false; btn.textContent = '🧠 AI Analyze';
 }
