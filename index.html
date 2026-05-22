@@ -57,8 +57,8 @@ body > * { position: relative; z-index: 1; }
 #preload-overlay .preload-fill { height: 100%; background: linear-gradient(90deg, #c4943a, #b8860b); border-radius: 10px; transition: width 0.15s; width: 0%; }
 #preload-overlay .preload-text { font-size: 14px; color: #a8a29e; }
 
-#wrong-book-btn { position: fixed; right: 15px; top: 15px; z-index: 1000; padding: 10px 20px; border-radius: 14px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-size: 13px; font-family: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(99,102,241,0.4); transition: all 0.25s cubic-bezier(.4,0,.2,1); max-width: calc(100vw - 30px); }
-#wrong-book-btn:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 8px 25px rgba(99,102,241,0.5); }
+#wrong-book-btn { padding: 10px 20px; border-radius: 14px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-size: 13px; font-family: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.25); transition: all 0.25s; }
+#wrong-book-btn:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
 #wrong-book-overlay { position: fixed; inset: 0; background: rgba(245,240,232,0.9); display: none; align-items: center; justify-content: center; z-index: 3500; padding: 20px; box-sizing: border-box; }
 #wrong-book-panel { background: #fff; border-radius: 24px; padding: 24px; width: min(900px, 92vw); max-height: 85vh; overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.25); border: 1px solid #e0d8c8; }
 #wrong-book-panel h2 { margin: 0 0 16px; font-size: 1.3rem; text-align: center; font-weight: 800; color: #1e293b; }
@@ -120,8 +120,9 @@ body > * { position: relative; z-index: 1; }
 ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.5); }
 /* AI Analysis */
-#ai-settings-toggle { padding: 8px 16px; border-radius: 10px; border: 1px solid #ece4d4; background: #faf6ee; font-size: 13px; font-weight: 700; cursor: pointer; color: #92400e; transition: all 0.2s; }
-#ai-settings-toggle:hover { background: #fef3c7; border-color: #f59e0b; }
+#ai-settings-toggle { padding: 10px 20px; border-radius: 14px; border: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-size: 13px; font-family: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(245,158,11,0.25); transition: all 0.25s; }
+#ai-settings-toggle:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(245,158,11,0.35); }
+.fixed-btns { position: fixed; right: 15px; top: 15px; z-index: 1000; display: flex; gap: 8px; align-items: center; max-width: calc(100vw - 30px); }
 #ai-settings-panel { display: none; margin: 16px 0; padding: 16px; border: 1px solid #ece4d4; border-radius: 14px; background: #faf6ee; }
 #ai-settings-panel.open { display: block; }
 .ai-prov-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
@@ -148,14 +149,15 @@ body > * { position: relative; z-index: 1; }
         <p>Cambridge IGCSE Biology (0610) · 744 Questions · 21 Chapters</p>
     </div>
 
-    <button type="button" id="wrong-book-btn">错题本</button>
+    <div class="fixed-btns">
+        <button type="button" id="wrong-book-btn">错题本</button>
+        <button type="button" id="ai-settings-toggle" title="配置 AI API Key，用于分析错题的知识薄弱点和复习建议">🔑 API Key 设置</button>
+    </div>
 
     <div id="wrong-book-overlay" role="dialog" aria-modal="true" aria-labelledby="wrong-book-title" aria-hidden="true">
         <div id="wrong-book-panel">
             <h2 id="wrong-book-title">错题本</h2>
-            <div style="text-align:center;margin-bottom:12px;">
-                <button type="button" id="ai-settings-toggle">⚙️ AI 分析设置</button>
-            </div>
+
             <div id="ai-settings-panel">
                 <div class="ai-prov-row" id="ai-prov-row"></div>
                 <select class="ai-model-select" id="ai-model-select"><option>选择模型</option></select>
@@ -1170,8 +1172,20 @@ async function analyzeWrongBook() {
 
 // Init AI UI
 document.getElementById('ai-settings-toggle').onclick = () => {
-  const p = document.getElementById('ai-settings-panel');
-  p.classList.toggle('open');
+  // Toggle settings panel as a modal overlay
+  let overlay = document.getElementById('ai-settings-overlay');
+  if (overlay) { overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex'; return; }
+  overlay = document.createElement('div');
+  overlay.id = 'ai-settings-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(245,240,232,0.9);display:flex;align-items:center;justify-content:center;z-index:4000;padding:20px;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#fff;border-radius:24px;padding:24px;width:min(440px,90vw);box-shadow:0 12px 40px rgba(0,0,0,0.15);border:1px solid #e0d8c8;';
+  // Move the settings panel content into this modal
+  const src = document.getElementById('ai-settings-panel');
+  if (src) { panel.innerHTML = '<h3 style="font-weight:800;color:#92400e;margin:0 0 16px;text-align:center;">🔑 API Key 设置</h3>'; panel.appendChild(src); src.classList.add('open'); src.style.display = 'block'; src.style.margin = '0'; src.style.border = 'none'; src.style.background = 'transparent'; }
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.style.display = 'none'; };
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
 };
 document.getElementById('ai-test-btn').onclick = testAIConnection;
 document.getElementById('ai-analyze-btn').onclick = analyzeWrongBook;
