@@ -601,9 +601,16 @@ function renderChapterList() {
             item.classList.toggle('selected', e.target.checked);
             updateChapterCountInfo();
         });
-        // Per-chapter count input
+        // Per-chapter count input — auto-check when value > 0
         const chInput = item.querySelector('.ch-q-input');
-        chInput.addEventListener('input', () => updateChapterCountInfo());
+        const cb = item.querySelector('input[type=checkbox]');
+        chInput.addEventListener('input', () => {
+            if (chInput.value && parseInt(chInput.value) > 0) {
+                cb.checked = true;
+                item.classList.add('selected');
+            }
+            updateChapterCountInfo();
+        });
         chInput.addEventListener('click', (e) => e.stopPropagation());
     });
     document.getElementById('sel-all-chapters').onclick = () => {
