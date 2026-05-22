@@ -248,9 +248,9 @@ body > * { position: relative; z-index: 1; }
     </div>
 
 <div id="preload-overlay">
-    <div style="font-weight:bold;">Loading question images...</div>
+    <div class="preload-text">Loading question images...</div>
     <div class="preload-bar"><div class="preload-fill"></div></div>
-    <div class="preload-text">Loaded 0 / 0</div>
+    <div class="preload-text" id="preload-detail">0/0 loaded</div>
 </div>
 <script>
 // --- IG Biology Question Bank ---
@@ -747,9 +747,8 @@ function confirmChapterSelection() {
 function preloadImagesAndStart() {
     const overlay = document.getElementById('preload-overlay');
     const fill = overlay.querySelector('.preload-fill');
-    const text = overlay.querySelector('.preload-text');
+    const detail = document.getElementById('preload-detail');
     overlay.style.display = 'flex';
-    // Disable all buttons
     document.querySelectorAll('button').forEach(b => b.disabled = true);
 
     const total = deepQuestions.length;
@@ -760,6 +759,7 @@ function preloadImagesAndStart() {
         startQuiz();
         return;
     }
+    detail.textContent = '0/' + total + ' loaded';
     deepQuestions.forEach(item => {
         if (!item.img) { loaded++; return; }
         const img = new Image();
@@ -767,7 +767,7 @@ function preloadImagesAndStart() {
             loaded++;
             const pct = Math.round((loaded / total) * 100);
             fill.style.width = pct + '%';
-            text.textContent = 'Loaded ' + loaded + ' / ' + total;
+            detail.textContent = loaded + '/' + total + ' loaded';
             if (loaded === total) {
                 overlay.style.display = 'none';
                 document.querySelectorAll('button').forEach(b => b.disabled = false);
