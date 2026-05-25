@@ -24,7 +24,7 @@ Built by a student, for students.
 
 ## ✨ Features
 
-### 📚 Complete Question Bank (770 Questions)
+### 📚 Complete Question Bank (777 Questions)
 
 | Chapter | Topic | Questions |
 |---------|-------|-----------|
