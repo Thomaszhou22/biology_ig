@@ -774,7 +774,7 @@ function preloadImagesAndStart() {
                 startQuiz();
             }
         };
-        img.src = 'https://raw.githubusercontent.com/Thomaszhou22/biology_jump_ig/main/questions/' + item.q.replace('\n', '');
+        img.src = 'questions/' + item.q.replace('\n', '');
     });
 }
 
@@ -811,7 +811,7 @@ function renderCurrentQuestion() {
     const qImg = document.getElementById('q-image');
     const hint = document.getElementById('zoom-hint');
     if (item.img) {
-        qImg.src = 'https://raw.githubusercontent.com/Thomaszhou22/biology_jump_ig/main/questions/' + item.q.replace('\n', '');
+        qImg.src = 'questions/' + item.q.replace('\n', '');
         qImg.style.display = 'block';
         if (hint) hint.style.display = 'block';
     } else {
@@ -965,7 +965,7 @@ function renderWrongBook() {
         records.map((item, i) => `
       <div class="wrong-book-item">
         <div class="wrong-book-meta"><strong>#${i + 1}</strong></div>
-        <div class="wrong-book-question"><strong>Q${item.questionIndex || '?'}:</strong> ${item.img ? '<img src="https://raw.githubusercontent.com/Thomaszhou22/biology_jump_ig/main/questions/' + escapeHtml(item.question) + '" style="max-width:200px;border-radius:4px;cursor:zoom-in;" onclick="zoomImage(this.src)">' : escapeHtml(item.question)}</div>
+        <div class="wrong-book-question"><strong>Q${item.questionIndex || '?'}:</strong> ${item.img ? '<img src="questions/' + escapeHtml(item.question) + '" style="max-width:200px;border-radius:4px;cursor:zoom-in;" onclick="zoomImage(this.src)">' : escapeHtml(item.question)}</div>
         <div class="wrong-book-answer"><strong>Correct Answer:</strong> ${escapeHtml(item.answer)}</div>
       </div>
     `).join('') + '</div></div>';
@@ -1258,7 +1258,7 @@ async function analyzeWrongBook() {
       const r = sample[i];
       parts.push({ type: 'text', text: `--- Q${i+1} (Correct: ${r.answer}) ---` });
       if (r.img) {
-        parts.push({ type: 'image', url: 'https://raw.githubusercontent.com/Thomaszhou22/biology_jump_ig/main/questions/' + r.question });
+        parts.push({ type: 'image', url: 'questions/' + r.question });
       }
     }
     parts.push({ type: 'text', text: '\nPlease provide detailed analysis and study recommendations.' });
