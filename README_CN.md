@@ -14,6 +14,13 @@
 
 ---
 
+## 🎉 重大更新 — 已上架 itch.io！
+
+Biology IG 和 Biology AS 现已在 **itch.io** 上架，浏览器直接打开即玩，无需下载！
+
+- 🎮 [Biology — IGCSE Edition（itch.io）](https://thomaszhou22.itch.io/biology-jump-igcse)
+- 🎮 [Biology — AS Level Edition（itch.io）](https://thomaszhou22.itch.io/biology-jump-as)
+
 <a id="中文"></a>
 
 ## 🌍 项目使命

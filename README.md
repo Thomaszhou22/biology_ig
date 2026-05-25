@@ -14,6 +14,13 @@
 
 ---
 
+## 🎉 Major Update — Now on itch.io!
+
+Both Biology IG and Biology AS are now available on **itch.io** — the world's largest indie platform. Play directly in your browser, no download needed!
+
+- 🎮 [Biology — IGCSE Edition on itch.io](https://thomaszhou22.itch.io/biology-jump-igcse)
+- 🎮 [Biology — AS Level Edition on itch.io](https://thomaszhou22.itch.io/biology-jump-as)
+
 <a id="english"></a>
 
 ## 🌍 Mission
