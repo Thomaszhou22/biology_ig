@@ -1,4 +1,4 @@
-# Contributing to Biology Jump — IGCSE Edition 🐸
+# Contributing to Biology — IGCSE Edition 🐸
 
 First off, thank you for considering contributing! This project exists to help CIE IGCSE Biology students worldwide study for free.
 

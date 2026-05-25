@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>IG 生物答题</title>
+    <style>
+        body { font-family: 'PingFang SC', sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; margin: 0; padding: 20px; }
+        #info-panel { width: 560px; max-width: 95vw; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; margin-top: 10px; }
+        #info-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 2px;
+        }
+        #question-box { border-radius: 8px; background: #f8f9fa; padding: 15px; margin: 15px 0; border-left: 5px solid #007bff; min-height: 140px; }
+        #q-image { max-width: 100%; max-height: 300px; border-radius: 6px; margin: 8px 0; display: block; margin-left: auto; margin-right: auto; cursor: zoom-in; transition: opacity 0.2s; }
+        #q-image:hover { opacity: 0.85; box-shadow: 0 0 0 3px rgba(0,123,255,0.5); }
+        .zoom-hint { text-align: center; margin-top: 4px; }
+        .zoom-btn { display: block; margin: 6px auto 0; padding: 6px 16px; border: 1px solid #ccc; border-radius: 6px; background: #f0f0f0; font-size: 13px; cursor: pointer; color: #555; }
+        .zoom-btn:hover { background: #e0e0e0; }
+        .image-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
+        .image-overlay img { max-width: 95vw; max-height: 95vh; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+        .option-btn { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; text-align: center; transition: 0.2s; font-size: 15px; font-weight: bold; }
+        .option-btn:hover:not(:disabled) { background: #eef2f7; border-color: #007bff; }
+        .option-btn:disabled { cursor: default; opacity: 0.7; }
+        .option-btn.correct-answer { background: #d4edda; border-color: #28a745; color: #155724; }
+        .option-btn.wrong-answer { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .options-row { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+        .status-msg { font-weight: bold; text-align: center; padding: 10px; border-radius: 6px; margin-top: 10px; display: none; }
+        .correct { background: #d4edda; color: #155724; }
+        .incorrect { background: #f8d7da; color: #721c24; }
+        .controls { margin-top: auto; padding-top: 20px; }
+        .btn-action { width: 100%; padding: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 15px; }
+        .btn-action:hover { opacity: 0.9; }
+        .progress-bar { width: 100%; height: 8px; background: #e9ecef; border-radius: 4px; margin: 10px 0; overflow: hidden; }
+        .progress-fill { height: 100%; background: #28a745; border-radius: 4px; transition: width 0.3s; }
+        .score-display { display: flex; justify-content: center; gap: 24px; font-size: 14px; color: #555; margin-top: 8px; }
+        .score-display span { font-weight: bold; }
+        .score-display .correct-count { color: #155724; }
+        .score-display .wrong-count { color: #721c24; }
+        .score-display .total-count { color: #007bff; }
+        #admin-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 4000;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #admin-panel {
+            background: #fff;
+            border-radius: 14px;
+            padding: 24px 28px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        #admin-panel button {
+            display: block;
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #d1d8e0;
+            background: #f8f9fa;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #admin-panel button:hover { background: #eef2f7; }
+        #admin-panel #toggle-answer-test-btn.is-on {
+            background: #e8f5e9;
+            border-color: #43a047;
+            color: #1b5e20;
+        }
+        #admin-panel #toggle-answer-test-btn.is-on:hover {
+            background: #c8e6c9;
+            border-color: #2e7d32;
+        }
+        #preload-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.95);
+            z-index: 5000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 16px;
+            color: #333;
+        }
+        #preload-overlay .preload-bar {
+            width: 320px;
+            max-width: 80vw;
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        #preload-overlay .preload-fill {
+            height: 100%;
+            background: #28a745;
+            border-radius: 6px;
+            transition: width 0.15s;
+            width: 0%;
+        }
+        #preload-overlay .preload-text {
+            font-size: 14px;
+            color: #666;
+        }
+        #wrong-book-btn {
+            position: fixed;
+            right: 15px;
+            top: 15px;
+            z-index: 1000;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #d1d8e0;
+            background: #fff;
+            color: #333;
+            font-size: 13px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            max-width: calc(100vw - 30px);
+        }
+        #wrong-book-btn:hover {
+            background: #eef2f7;
+            transform: scale(1.05);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+        }
+        #wrong-book-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3500;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #wrong-book-panel {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            width: min(900px, 92vw);
+            max-height: 85vh;
+            overflow: auto;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+        }
+        #wrong-book-panel h2 { margin: 0 0 16px; font-size: 1.25rem; text-align: center; }
+        #wrong-book-list { margin-bottom: 16px; }
+        .wrong-book-section { margin-bottom: 22px; }
+        .wrong-book-section:last-child { margin-bottom: 0; }
+        .wrong-book-section-title {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #2f3542;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e6ed;
+            text-align: left;
+        }
+        .wrong-book-count { font-weight: normal; color: #666; font-size: 0.9rem; margin-left: 6px; }
+        .wrong-book-item {
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 14px;
+            text-align: left;
+        }
+        .wrong-book-section-items .wrong-book-item:last-child { margin-bottom: 0; }
+        .wrong-book-meta { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; margin-bottom: 10px; font-size: 0.95rem; }
+        .wrong-book-item .wrong-book-meta strong { margin-right: 6px; }
+        .wrong-book-question { margin-bottom: 10px; }
+        .wrong-book-options { margin-bottom: 10px; }
+        .wrong-book-options ol { margin: 6px 0 0; padding-left: 1.4em; }
+        .wrong-book-answer { font-size: 0.95rem; }
+        .wrong-book-footer-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .wrong-book-footer-actions button {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #d1d8e0;
+            background: #f8f9fa;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .wrong-book-footer-actions button:hover { background: #eef2f7; }
+        #wrong-book-clear-all { border-color: #e8b4b4; background: #fff5f5; color: #a61e1e; }
+        #wrong-book-clear-all:hover { background: #ffe8e8; border-color: #d64545; }
+        /* Chapter selection modal */
+        #chapter-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 2001; }
+        #chapter-modal .modal-box { background: #fff; padding: 28px 32px; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.18); min-width: 360px; max-width: 90vw; max-height: 85vh; overflow-y: auto; }
+        #chapter-modal .modal-box h2 { margin: 0 0 12px; font-size: 1.25rem; text-align: center; }
+        #chapter-modal .modal-box p.desc { font-size: 0.85rem; color: #666; text-align: center; margin: 0 0 16px; }
+        .chapter-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .chapter-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid #d1d8e0; border-radius: 8px; cursor: pointer; transition: 0.15s; }
+        .chapter-item:hover { background: #f0f4ff; border-color: #007bff; }
+        .chapter-item.selected { background: #e8f0fe; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.2); }
+        .chapter-item input[type=checkbox] { width: 18px; height: 18px; accent-color: #007bff; cursor: pointer; flex-shrink: 0; }
+        .chapter-item .ch-name { flex: 1; font-weight: bold; font-size: 0.95rem; }
+        .chapter-item .ch-count { font-size: 0.8rem; color: #888; }
+        .quick-btns { display: flex; gap: 6px; margin-bottom: 14px; }
+        .quick-btns button { flex: 1; padding: 6px 10px; border: 1px solid #d1d8e0; border-radius: 6px; background: #f8f9fa; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+        .quick-btns button:hover { background: #eef2f7; }
+        .quick-btns button.active { background: #e8f0fe; border-color: #007bff; color: #007bff; }
+        #question-count-field { margin-bottom: 14px; }
+        #question-count-field label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 6px; }
+        #question-count-field input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d1d8e0; border-radius: 8px; font-size: 15px; font-family: inherit; }
+        #question-count-field input:focus { outline: none; border-color: #007bff; }
+        #question-count-info { font-size: 0.8rem; color: #888; margin-top: 4px; }
+        #chapter-modal #start-game-btn2 { width: 100%; margin-top: 8px; padding: 12px; border: none; border-radius: 8px; background: #2f3542; color: #fff; font-weight: bold; font-size: 15px; cursor: pointer; }
+        #chapter-modal #start-game-btn2:hover { background: #1e2229; }
+        #chapter-modal #back-to-names-btn { width: 100%; margin-top: 8px; padding: 10px; border: 1px solid #d1d8e0; border-radius: 8px; background: none; color: #666; font-weight: bold; font-size: 13px; cursor: pointer; }
+        #chapter-modal #back-to-names-btn:hover { background: #f5f5f5; }
+        #chapter-modal-warning { font-size: 0.85rem; color: #c0392b; margin-top: 10px; min-height: 1.2em; text-align: center; }
+        .no-chapters-msg { text-align: center; color: #999; padding: 20px 0; font-size: 0.9rem; }
+        #finish-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+            display: none; align-items: center; justify-content: center;
+            z-index: 3000; padding: 20px; box-sizing: border-box;
+        }
+        #finish-modal {
+            background: #fff; border-radius: 16px; padding: 28px 32px;
+            max-width: 420px; width: 100%;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.22); text-align: center;
+        }
+        #finish-modal h2 { margin: 0 0 16px; font-size: 1.4rem; }
+        #finish-modal .stat-line { font-size: 1.1rem; margin: 8px 0; color: #333; }
+        #finish-modal .stat-line span { font-weight: bold; }
+        #finish-modal #finish-restart-btn {
+            width: 100%; margin-top: 20px; padding: 12px; border: none;
+            border-radius: 8px; background: #2f3542; color: #fff;
+            font-weight: bold; font-size: 15px; cursor: pointer;
+        }
+        #finish-modal #finish-restart-btn:hover { background: #1e2229; }
+    </style>
+</head>
+<body>
+
+    <button type="button" id="wrong-book-btn">错题本</button>
+
+    <div id="wrong-book-overlay" role="dialog" aria-modal="true" aria-labelledby="wrong-book-title" aria-hidden="true">
+        <div id="wrong-book-panel">
+            <h2 id="wrong-book-title">错题本</h2>
+            <div id="wrong-book-list"></div>
+            <div class="wrong-book-footer-actions">
+                <button type="button" id="wrong-book-clear-all">清空全部</button>
+                <button type="button" id="wrong-book-close">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="chapter-modal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-box">
+            <h2>选择题库章节</h2>
+            <p class="desc">选择一个或多个章节，然后设置题量</p>
+            <div class="quick-btns">
+                <button type="button" id="sel-all-chapters">全选</button>
+                <button type="button" id="sel-none-chapters">全不选</button>
+            </div>
+            <div id="chapter-list" class="chapter-grid"></div>
+            <div id="question-count-field">
+                <label for="q-count-input">题目数量</label>
+                <input id="q-count-input" type="number" min="5" max="999" placeholder="例如：20（留空则使用全部）">
+                <div id="question-count-info"></div>
+            </div>
+            <div id="chapter-modal-warning"></div>
+            <button type="button" id="start-game-btn2">开始答题</button>
+            <button type="button" id="back-to-names-btn">← 关闭</button>
+        </div>
+    </div>
+
+    <div id="finish-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+        <div id="finish-modal">
+            <h2>答题完成 🎉</h2>
+            <p class="stat-line">总题数：<span id="finish-total">0</span></p>
+            <p class="stat-line">正确：<span id="finish-correct" style="color:#155724">0</span></p>
+            <p class="stat-line">错误：<span id="finish-wrong" style="color:#721c24">0</span></p>
+            <p class="stat-line">正确率：<span id="finish-acc">—</span></p>
+            <button type="button" id="finish-restart-btn">重新选择题库</button>
+        </div>
+    </div>
+
+    <div id="admin-overlay" role="dialog" aria-modal="true" aria-label="Admin" aria-hidden="true">
+        <div id="admin-panel">
+            <button type="button" id="toggle-answer-test-btn">All Answers Correct: OFF</button>
+            <button type="button" id="admin-close">Close</button>
+        </div>
+    </div>
+
+    <h1>🧬 IG Biology Quiz</h1>
+
+    <div id="info-panel">
+        <div id="info-panel-header">
+            <div style="font-size: 16px; font-weight: bold;">
+                <span id="question-counter">请选择题库开始答题</span>
+            </div>
+        </div>
+        <div class="progress-bar" id="progress-bar" style="display:none;">
+            <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+        <div class="score-display" id="score-display" style="display:none;">
+            <span>✅ <span class="correct-count" id="correct-count">0</span></span>
+            <span>❌ <span class="wrong-count" id="wrong-count">0</span></span>
+            <span>剩余 <span class="total-count" id="remaining-count">0</span></span>
+        </div>
+        <div id="question-area">
+            <div id="question-box">
+                <div id="q-text">请点击下方按钮选择题库</div>
+                <img id="q-image" style="display:none;" onclick="zoomImage(this.src)" />
+                <div id="zoom-hint" class="zoom-hint" style="display:none;"><button class="zoom-btn" onclick="zoomImage(document.getElementById('q-image').src)">放大图片</button></div>
+                <div id="options"></div>
+            </div>
+        </div>
+        <div id="msg" class="status-msg"></div>
+        <div class="controls">
+            <button type="button" id="reselect-chapters-btn" class="btn-action" style="background:#007bff;color:white;">选择题库</button>
+            <button type="button" id="abort-btn" class="btn-action" style="background:#dc3545;color:white;display:none;margin-top:8px;">终止答题</button>
+        </div>
+    </div>
+
+<div id="preload-overlay">
+    <div style="font-weight:bold;">正在加载题目图片...</div>
+    <div class="preload-bar"><div class="preload-fill"></div></div>
+    <div class="preload-text">已加载 0 / 0</div>
+</div>
+<script>
+// --- IG Biology 题库 ---
+const QUESTION_CHAPTERS = [
+  { id: 'ch1_characteristics', name: 'Characteristics and Classification of Living Organisms', count: 45, answers: [
+    {a:'B'},{a:'C'},{a:'D'},{a:'B'},{a:'D'},{a:'A'},{a:'A'},{a:'D'},{a:'A'},{a:'B'},
+    {a:'C'},{a:'D'},{a:'D'},{a:'D'},{a:'D'},{a:'B'},{a:'B'},{a:'A'},{a:'B'},{a:'C'},
+    {a:'C'},{a:'C'},{a:'D'},{a:'B'},{a:'C'},{a:'B'},{a:'D'},{a:'D'},{a:'C'},{a:'A'},
+    {a:'B'},{a:'D'},{a:'A'},{a:'D'},{a:'A'},{a:'B'},{a:'B'},{a:'D'},{a:'A'},{a:'B'},
+    {a:'D'},{a:'D'},{a:'D'},{a:'B'},{a:'C'},
+  ]},
+  { id: 'ch2_organization', name: 'Organization and Maintenance of the Organism', count: 45, answers: [
+    {a:'C'},{a:'C'},{a:'B'},{a:'B'},{a:'C'},{a:'B'},{a:'D'},{a:'B'},{a:'A'},{a:'D'},
+    {a:'D'},{a:'B'},{a:'A'},{a:'B'},{a:'C'},{a:'B'},{a:'B'},{a:'B'},{a:'A'},{a:'B'},
+    {a:'B'},{a:'C'},{a:'D'},{a:'C'},{a:'C'},{a:'C'},{a:'D'},{a:'D'},{a:'A'},{a:'B'},
+    {a:'A'},{a:'B'},{a:'C'},{a:'B'},{a:'D'},{a:'C'},{a:'C'},{a:'B'},{a:'C'},{a:'C'},
+    {a:'B'},{a:'C'},{a:'C'},{a:'A'},{a:'C'},
+  ]},
+  { id: 'ch3_movement', name: 'Movement in and out of Cells', count: 45, answers: [
+    {a:'C'},{a:'B'},{a:'C'},{a:'D'},{a:'A'},{a:'B'},{a:'A'},{a:'B'},{a:'A'},{a:'B'},
+    {a:'B'},{a:'D'},{a:'C'},{a:'A'},{a:'D'},{a:'C'},{a:'D'},{a:'B'},{a:'D'},{a:'A'},
+    {a:'B'},{a:'B'},{a:'D'},{a:'A'},{a:'B'},{a:'A'},{a:'B'},{a:'B'},{a:'A'},{a:'D'},
+    {a:'B'},{a:'A'},{a:'D'},{a:'D'},{a:'D'},{a:'B'},{a:'C'},{a:'C'},{a:'A'},{a:'C'},
+    {a:'B'},{a:'B'},{a:'C'},{a:'C'},{a:'B'},
+  ]},
+  { id: 'ch4_biological_molecules', name: 'Biological Molecules', count: 33, answers: [
+    {a:'A'},{a:'B'},{a:'B'},{a:'C'},{a:'D'},{a:'B'},{a:'C'},{a:'D'},{a:'C'},{a:'A'},
+    {a:'B'},{a:'C'},{a:'A'},{a:'C'},{a:'D'},{a:'B'},{a:'B'},{a:'C'},{a:'A'},{a:'B'},
+    {a:'C'},{a:'D'},{a:'C'},{a:'B'},{a:'D'},{a:'D'},{a:'C'},{a:'B'},{a:'B'},{a:'B'},
+    {a:'C'},{a:'D'},{a:'C'},
+  ]},
+  { id: 'ch5_enzymes', name: 'Enzymes', count: 26, answers: [
+    {a:'B'},{a:'C'},{a:'B'},{a:'D'},{a:'A'},{a:'A'},{a:'D'},{a:'D'},{a:'D'},{a:'B'},
+    {a:'D'},{a:'A'},{a:'C'},{a:'C'},{a:'A'},{a:'C'},{a:'B'},{a:'A'},{a:'B'},{a:'C'},
+    {a:'A'},{a:'D'},{a:'B'},{a:'D'},{a:'D'},{a:'A'},
+  ]},
+  { id: 'ch6_plant_nutrition', name: 'Plant Nutrition', count: 32, answers: [
+    {a:'B'},{a:'D'},{a:'A'},{a:'D'},{a:'D'},{a:'A'},{a:'C'},{a:'C'},{a:'C'},{a:'D'},
+    {a:'A'},{a:'A'},{a:'D'},{a:'A'},{a:'C'},{a:'A'},{a:'B'},{a:'C'},{a:'C'},{a:'C'},
+    {a:'C'},{a:'B'},{a:'D'},{a:'D'},{a:'D'},{a:'B'},{a:'C'},{a:'B'},{a:'B'},{a:'A'},
+    {a:'C'},{a:'D'},
+  ]},
+  { id: 'ch7_human_nutrition', name: 'Human Nutrition', count: 36, answers: [
+    {a:'D'},{a:'C'},{a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'A'},{a:'C'},{a:'C'},{a:'D'},
+    {a:'C'},{a:'B'},{a:'B'},{a:'A'},{a:'B'},{a:'A'},{a:'A'},{a:'C'},{a:'C'},{a:'A'},
+    {a:'A'},{a:'B'},{a:'D'},{a:'C'},{a:'B'},{a:'C'},{a:'C'},{a:'B'},{a:'B'},{a:'C'},
+    {a:'C'},{a:'A'},{a:'B'},{a:'C'},{a:'C'},{a:'D'},
+  ]},
+  { id: 'ch8_transport_in_plants', name: 'Transport in Plants', count: 37, answers: [
+    {a:'B'},{a:'C'},{a:'D'},{a:'D'},{a:'D'},{a:'A'},{a:'A'},{a:'C'},{a:'B'},{a:'B'},
+    {a:'C'},{a:'A'},{a:'D'},{a:'D'},{a:'C'},{a:'A'},{a:'B'},{a:'D'},{a:'A'},{a:'B'},
+    {a:'C'},{a:'C'},{a:'B'},{a:'D'},{a:'A'},{a:'C'},{a:'B'},{a:'D'},{a:'C'},{a:'D'},
+    {a:'A'},{a:'B'},{a:'D'},{a:'D'},{a:'B'},{a:'C'},{a:'A'},
+  ]},
+  { id: 'ch9_transport_in_animals', name: 'Transport in Animals', count: 34, answers: [
+    {a:'C'},{a:'A'},{a:'C'},{a:'D'},{a:'D'},{a:'D'},{a:'B'},{a:'C'},{a:'B'},{a:'D'},
+    {a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'C'},{a:'D'},{a:'D'},{a:'D'},
+    {a:'D'},{a:'B'},{a:'D'},{a:'C'},{a:'C'},{a:'C'},{a:'C'},{a:'A'},{a:'D'},{a:'A'},
+    {a:'D'},{a:'B'},{a:'B'},{a:'C'},
+  ]},
+  { id: 'ch10_diseases_and_immunity', name: 'Diseases and Immunity', count: 27, answers: [
+    {a:'C'},{a:'C'},{a:'D'},{a:'A'},{a:'A'},{a:'B'},{a:'C'},{a:'A'},{a:'A'},{a:'C'},
+    {a:'A'},{a:'B'},{a:'A'},{a:'C'},{a:'C'},{a:'C'},{a:'A'},{a:'D'},{a:'D'},{a:'A'},
+    {a:'B'},{a:'C'},{a:'A'},{a:'C'},{a:'B'},{a:'B'},{a:'C'},
+  ]},
+  { id: 'ch11_gas_exchange', name: 'Gas Exchange in Humans', count: 27, answers: [
+    {a:'B'},{a:'A'},{a:'C'},{a:'A'},{a:'D'},{a:'A'},{a:'C'},{a:'A'},{a:'A'},{a:'B'},
+    {a:'B'},{a:'C'},{a:'B'},{a:'B'},{a:'B'},{a:'A'},{a:'C'},{a:'A'},{a:'B'},{a:'A'},
+    {a:'B'},{a:'C'},{a:'D'},{a:'B'},{a:'D'},{a:'C'},{a:'C'},
+  ]},
+  { id: 'ch12_respiration', name: 'Respiration', count: 32, answers: [
+    {a:'D'},{a:'C'},{a:'C'},{a:'A'},{a:'B'},{a:'B'},{a:'D'},{a:'B'},{a:'A'},{a:'C'},
+    {a:'C'},{a:'B'},{a:'A'},{a:'C'},{a:'A'},{a:'C'},{a:'A'},{a:'A'},{a:'D'},{a:'A'},
+    {a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'D'},{a:'C'},{a:'D'},{a:'C'},{a:'A'},{a:'A'},
+    {a:'B'},{a:'D'},
+  ]},
+  { id: 'ch13_excretion', name: 'Excretion in Humans', count: 30, answers: [
+    {a:'A'},{a:'A'},{a:'D'},{a:'A'},{a:'C'},{a:'C'},{a:'C'},{a:'C'},{a:'D'},{a:'A'},
+    {a:'B'},{a:'D'},{a:'A'},{a:'A'},{a:'B'},{a:'D'},{a:'D'},{a:'D'},{a:'B'},{a:'B'},
+    {a:'D'},{a:'B'},{a:'A'},{a:'B'},{a:'B'},{a:'B'},{a:'C'},{a:'A'},{a:'B'},{a:'B'},
+  ]},
+  { id: 'ch14_coordination', name: 'Coordination and Response', count: 49, answers: [
+    {a:'C'},{a:'D'},{a:'D'},{a:'A'},{a:'D'},{a:'D'},{a:'B'},{a:'D'},{a:'C'},{a:'C'},
+    {a:'D'},{a:'D'},{a:'D'},{a:'C'},{a:'A'},{a:'C'},{a:'A'},{a:'C'},{a:'D'},{a:'B'},
+    {a:'D'},{a:'B'},{a:'B'},{a:'D'},{a:'B'},{a:'A'},{a:'C'},{a:'A'},{a:'C'},{a:'D'},
+    {a:'B'},{a:'C'},{a:'D'},{a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'A'},
+    {a:'D'},{a:'A'},{a:'C'},{a:'B'},{a:'B'},{a:'C'},{a:'B'},{a:'D'},{a:'B'},
+  ]},
+  { id: 'ch15_drugs', name: 'Drugs', count: 28, answers: [
+    {a:'B'},{a:'C'},{a:'D'},{a:'B'},{a:'A'},{a:'B'},{a:'D'},{a:'A'},{a:'C'},{a:'D'},
+    {a:'D'},{a:'B'},{a:'C'},{a:'D'},{a:'A'},{a:'B'},{a:'B'},{a:'A'},{a:'B'},{a:'C'},
+    {a:'D'},{a:'A'},{a:'D'},{a:'A'},{a:'C'},{a:'A'},{a:'C'},{a:'B'},
+  ]},
+  { id: 'ch16_reproduction', name: 'Reproduction', count: 41, answers: [
+    {a:'A'},{a:'C'},{a:'D'},{a:'B'},{a:'D'},{a:'A'},{a:'A'},{a:'C'},{a:'C'},{a:'D'},
+    {a:'C'},{a:'C'},{a:'C'},{a:'B'},{a:'A'},{a:'C'},{a:'A'},{a:'B'},{a:'D'},{a:'A'},
+    {a:'C'},{a:'C'},{a:'B'},{a:'C'},{a:'B'},{a:'A'},{a:'D'},{a:'B'},{a:'D'},{a:'C'},
+    {a:'C'},{a:'A'},{a:'D'},{a:'C'},{a:'B'},{a:'B'},{a:'D'},{a:'D'},{a:'C'},{a:'D'},
+    {a:'B'},
+  ]},
+  { id: 'ch17_inheritance', name: 'Inheritance', count: 41, answers: [
+    {a:'B'},{a:'B'},{a:'C'},{a:'B'},{a:'A'},{a:'A'},{a:'B'},{a:'A'},{a:'D'},{a:'C'},
+    {a:'C'},{a:'D'},{a:'B'},{a:'B'},{a:'B'},{a:'C'},{a:'D'},{a:'B'},{a:'C'},{a:'B'},
+    {a:'A'},{a:'D'},{a:'C'},{a:'A'},{a:'C'},{a:'C'},{a:'B'},{a:'B'},{a:'B'},{a:'C'},
+    {a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'C'},{a:'C'},{a:'C'},{a:'C'},{a:'A'},{a:'C'},
+    {a:'D'},
+  ]},
+  { id: 'ch18_variation', name: 'Variation and Selection', count: 40, answers: [
+    {a:'D'},{a:'D'},{a:'A'},{a:'D'},{a:'B'},{a:'B'},{a:'B'},{a:'C'},{a:'A'},{a:'B'},
+    {a:'D'},{a:'D'},{a:'B'},{a:'D'},{a:'B'},{a:'D'},{a:'C'},{a:'B'},{a:'B'},{a:'D'},
+    {a:'C'},{a:'D'},{a:'C'},{a:'C'},{a:'D'},{a:'B'},{a:'B'},{a:'C'},{a:'C'},{a:'D'},
+    {a:'B'},{a:'C'},{a:'B'},{a:'B'},{a:'B'},{a:'D'},{a:'C'},{a:'C'},{a:'B'},{a:'A'},
+  ]},
+  { id: 'ch19_organisms_environment', name: 'Organisms and their Environment', count: 50, answers: [
+    {a:'C'},{a:'D'},{a:'D'},{a:'C'},{a:'D'},{a:'A'},{a:'C'},{a:'D'},{a:'B'},{a:'D'},
+    {a:'C'},{a:'C'},{a:'C'},{a:'B'},{a:'B'},{a:'B'},{a:'C'},{a:'C'},{a:'A'},{a:'A'},
+    {a:'A'},{a:'A'},{a:'A'},{a:'D'},{a:'C'},{a:'B'},{a:'A'},{a:'A'},{a:'B'},{a:'B'},
+    {a:'B'},{a:'B'},{a:'D'},{a:'D'},{a:'C'},{a:'C'},{a:'C'},{a:'D'},{a:'C'},{a:'B'},
+    {a:'A'},{a:'A'},{a:'A'},{a:'D'},{a:'D'},{a:'A'},{a:'D'},{a:'C'},{a:'C'},
+  ]},
+  { id: 'ch20_biotechnology', name: 'Biotechnology and Genetic Engineering', count: 45, answers: [
+    {a:'C'},{a:'D'},{a:'D'},{a:'B'},{a:'B'},{a:'C'},{a:'D'},{a:'C'},{a:'D'},{a:'D'},
+    {a:'C'},{a:'D'},{a:'D'},{a:'C'},{a:'D'},{a:'B'},{a:'B'},{a:'B'},{a:'C'},{a:'B'},
+    {a:'B'},{a:'B'},{a:'A'},{a:'A'},{a:'D'},{a:'D'},{a:'C'},{a:'D'},{a:'A'},{a:'C'},
+    {a:'C'},{a:'B'},{a:'A'},{a:'A'},{a:'C'},{a:'A'},{a:'A'},{a:'B'},{a:'D'},{a:'B'},
+    {a:'A'},{a:'C'},{a:'D'},{a:'C'},
+  ]},
+  { id: 'ch21_human_influences', name: 'Human Influences on Ecosystems', count: 34, answers: [
+    {a:'D'},{a:'B'},{a:'C'},{a:'D'},{a:'B'},{a:'A'},{a:'A'},{a:'C'},{a:'D'},{a:'C'},
+    {a:'C'},{a:'C'},{a:'C'},{a:'B'},{a:'C'},{a:'B'},{a:'C'},{a:'C'},{a:'A'},{a:'A'},
+    {a:'C'},{a:'A'},{a:'C'},{a:'C'},{a:'C'},{a:'D'},{a:'C'},{a:'A'},{a:'C'},{a:'B'},
+    {a:'D'},{a:'A'},{a:'A'},{a:'A'},
+  ]},
+];
+
+// === State ===
+let deepQuestions = [];
+let selectedQuestionCount = 0;
+let activeChapters = [];
+let currentQuestionItem = null;
+let isAnswering = false;
+let questionIndex = 0;
+let totalCorrect = 0;
+let totalWrong = 0;
+
+// === Progress persistence ===
+const PROGRESS_KEY = 'ig-quiz-progress';
+function saveProgress() {
+    try {
+        const itemIdx = deepQuestions.indexOf(currentQuestionItem);
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+            deepQuestions, questionIndex, totalCorrect, totalWrong, currentQuestionItemIndex: itemIdx >= 0 ? itemIdx : 0
+        }));
+    } catch(e) {}
+}
+function loadProgress() {
+    try {
+        const raw = localStorage.getItem(PROGRESS_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch(e) { return null; }
+}
+function clearProgress() {
+    try { localStorage.removeItem(PROGRESS_KEY); } catch(e) {}
+}
+function abortQuiz() {
+    clearProgress();
+    deepQuestions = []; currentQuestionItem = null; isAnswering = false;
+    questionIndex = 0; totalCorrect = 0; totalWrong = 0;
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('score-display').style.display = 'none';
+    document.getElementById('question-counter').textContent = '请选择题库开始答题';
+    document.getElementById('q-text').textContent = '请点击下方按钮选择题库';
+    document.getElementById('q-image').style.display = 'none';
+    document.getElementById('zoom-hint').style.display = 'none';
+    document.getElementById('options').innerHTML = '';
+    document.getElementById('abort-btn').style.display = 'none';
+    hideMsg(); hideFinishOverlay();
+}
+
+// === Load questions ===
+function loadQuestionsFromChapters(chapterIds, maxCount) {
+    deepQuestions = [];
+    activeChapters = chapterIds;
+    for (const ch of QUESTION_CHAPTERS) {
+        if (!chapterIds.includes(ch.id)) continue;
+        const count = ch.count || 0;
+        for (let i = 1; i <= count; i++) {
+            const num = String(i).padStart(2, '0');
+            const qPath = ch.id + '/q' + num + '.jpg';
+            const ans = ch.answers ? ch.answers[i - 1] : null;
+            deepQuestions.push({
+                q: qPath,
+                img: true,
+                a: ans ? ans.a : '?',
+                chapter: ch.name
+            });
+        }
+    }
+    // Shuffle
+    for (let i = deepQuestions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deepQuestions[i], deepQuestions[j]] = [deepQuestions[j], deepQuestions[i]];
+    }
+    if (maxCount > 0 && deepQuestions.length > maxCount) {
+        deepQuestions.length = maxCount;
+    }
+}
+
+// === Chapter selection UI ===
+function renderChapterList() {
+    const container = document.getElementById('chapter-list');
+    if (!QUESTION_CHAPTERS.length) {
+        container.innerHTML = '<div class="no-chapters-msg">暂无题库章节。</div>';
+        document.getElementById('question-count-info').textContent = '';
+        return;
+    }
+    container.innerHTML = QUESTION_CHAPTERS.map(ch => {
+        return `<div class="chapter-item" data-id="${ch.id}">
+            <input type="checkbox" id="ch-${ch.id}" value="${ch.id}">
+            <span class="ch-name">${ch.name}</span>
+            <span class="ch-count">${ch.count || 0} 题</span>
+        </div>`;
+    }).join('');
+    container.querySelectorAll('.chapter-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const cb = item.querySelector('input[type=checkbox]');
+            cb.checked = !cb.checked;
+            item.classList.toggle('selected', cb.checked);
+            updateChapterCountInfo();
+        });
+        item.querySelector('input[type=checkbox]').addEventListener('change', (e) => {
+            item.classList.toggle('selected', e.target.checked);
+            updateChapterCountInfo();
+        });
+    });
+    document.getElementById('sel-all-chapters').onclick = () => {
+        container.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = true; });
+        container.querySelectorAll('.chapter-item').forEach(el => el.classList.add('selected'));
+        updateChapterCountInfo();
+    };
+    document.getElementById('sel-none-chapters').onclick = () => {
+        container.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
+        container.querySelectorAll('.chapter-item').forEach(el => el.classList.remove('selected'));
+        updateChapterCountInfo();
+    };
+    updateChapterCountInfo();
+}
+
+function updateChapterCountInfo() {
+    const checked = document.querySelectorAll('#chapter-list input[type=checkbox]:checked');
+    let total = 0;
+    checked.forEach(cb => {
+        const ch = QUESTION_CHAPTERS.find(c => c.id === cb.value);
+        if (ch) total += (ch.count || 0);
+    });
+    const info = document.getElementById('question-count-info');
+    const countInput = document.getElementById('q-count-input');
+    if (total === 0) {
+        info.textContent = '请至少选择一个章节';
+    } else {
+        info.textContent = `已选 ${total} 道题，留空则使用全部`;
+    }
+    countInput.max = total || 999;
+}
+
+function openChapterModal() {
+    renderChapterList();
+    document.getElementById('chapter-modal').style.display = 'flex';
+    document.getElementById('chapter-modal').setAttribute('aria-hidden', 'false');
+    document.getElementById('chapter-modal-warning').textContent = '';
+}
+
+function closeChapterModal() {
+    document.getElementById('chapter-modal').style.display = 'none';
+    document.getElementById('chapter-modal').setAttribute('aria-hidden', 'true');
+}
+
+function confirmChapterSelection() {
+    const w = document.getElementById('chapter-modal-warning');
+    const checked = document.querySelectorAll('#chapter-list input[type=checkbox]:checked');
+    if (checked.length === 0) {
+        w.textContent = '请至少选择一个章节！';
+        return;
+    }
+    const chapterIds = Array.from(checked).map(cb => cb.value);
+    const maxCount = parseInt(document.getElementById('q-count-input').value) || 0;
+    if (maxCount < 0) {
+        w.textContent = '题量不能为负数';
+        return;
+    }
+    let total = 0;
+    chapterIds.forEach(id => {
+        const ch = QUESTION_CHAPTERS.find(c => c.id === id);
+        if (ch) total += (ch.count || 0);
+    });
+    if (maxCount > total) {
+        w.textContent = `题量（${maxCount}）超过已选总题数（${total}）`;
+        return;
+    }
+    selectedQuestionCount = maxCount;
+    loadQuestionsFromChapters(chapterIds, maxCount);
+    w.textContent = '';
+    closeChapterModal();
+    preloadImagesAndStart();
+}
+
+function preloadImagesAndStart() {
+    const overlay = document.getElementById('preload-overlay');
+    const fill = overlay.querySelector('.preload-fill');
+    const text = overlay.querySelector('.preload-text');
+    overlay.style.display = 'flex';
+    // Disable all buttons
+    document.querySelectorAll('button').forEach(b => b.disabled = true);
+
+    const total = deepQuestions.length;
+    let loaded = 0;
+    if (total === 0) {
+        overlay.style.display = 'none';
+        document.querySelectorAll('button').forEach(b => b.disabled = false);
+        startQuiz();
+        return;
+    }
+    deepQuestions.forEach(item => {
+        if (!item.img) { loaded++; return; }
+        const img = new Image();
+        img.onload = img.onerror = function() {
+            loaded++;
+            const pct = Math.round((loaded / total) * 100);
+            fill.style.width = pct + '%';
+            text.textContent = '已加载 ' + loaded + ' / ' + total;
+            if (loaded === total) {
+                overlay.style.display = 'none';
+                document.querySelectorAll('button').forEach(b => b.disabled = false);
+                startQuiz();
+            }
+        };
+        img.src = 'questions/' + item.q.replace('\n', '');
+    });
+}
+
+function startQuiz() {
+    questionIndex = 0;
+    totalCorrect = 0;
+    totalWrong = 0;
+    document.getElementById('progress-bar').style.display = 'block';
+    document.getElementById('score-display').style.display = 'flex';
+    hideFinishOverlay();
+    updateScoreDisplay();
+    document.getElementById('abort-btn').style.display = 'block';
+    saveProgress();
+    showNextQuestion();
+}
+
+function showNextQuestion() {
+    if (questionIndex >= deepQuestions.length) {
+        showFinishOverlay();
+        return;
+    }
+    isAnswering = true;
+    currentQuestionItem = deepQuestions[questionIndex];
+    renderCurrentQuestion();
+    updateScoreDisplay();
+}
+
+function renderCurrentQuestion() {
+    const item = currentQuestionItem;
+    if (!item) return;
+    document.getElementById('question-counter').textContent = `第 ${questionIndex + 1} / ${deepQuestions.length} 题`;
+    document.getElementById('q-text').innerHTML = `<b>Q${questionIndex + 1}：</b>`;
+
+    const qImg = document.getElementById('q-image');
+    const hint = document.getElementById('zoom-hint');
+    if (item.img) {
+        qImg.src = 'questions/' + item.q.replace('\n', '');
+        qImg.style.display = 'block';
+        if (hint) hint.style.display = 'block';
+    } else {
+        qImg.style.display = 'none';
+        if (hint) hint.style.display = 'none';
+    }
+
+    const opt = document.getElementById('options');
+    opt.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = 'options-row';
+    ['A', 'B', 'C', 'D'].forEach(letter => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = letter;
+        btn.onclick = () => handleAnswer(letter, btn);
+        opt.appendChild(btn);
+    });
+}
+
+function handleAnswer(letter, clickedBtn) {
+    if (!isAnswering) return;
+    isAnswering = false;
+
+    const qItem = currentQuestionItem;
+    const correct = testAllAnswersCorrect ? true : (letter === qItem.a);
+
+    // Disable all buttons and highlight
+    const allBtns = document.querySelectorAll('.option-btn');
+    allBtns.forEach(b => {
+        b.disabled = true;
+        if (b.textContent === qItem.a) b.classList.add('correct-answer');
+    });
+
+    if (correct) {
+        totalCorrect++;
+        showMsg('✅ 正确！', 'correct');
+    } else {
+        totalWrong++;
+        clickedBtn.classList.add('wrong-answer');
+        showMsg(`❌ 错误！正确答案是: ${qItem.a}`, 'incorrect');
+        addWrongQuestionRecord(qItem, questionIndex + 1);
+    }
+
+    updateScoreDisplay();
+
+    // Auto-advance after delay
+    setTimeout(() => {
+        hideMsg();
+        questionIndex++;
+        showNextQuestion();
+        saveProgress();
+    }, 1500);
+}
+
+function updateScoreDisplay() {
+    const total = totalCorrect + totalWrong;
+    const remaining = deepQuestions.length - questionIndex;
+    document.getElementById('correct-count').textContent = totalCorrect;
+    document.getElementById('wrong-count').textContent = totalWrong;
+    document.getElementById('remaining-count').textContent = remaining;
+    const pct = deepQuestions.length > 0 ? Math.round((total / deepQuestions.length) * 100) : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function showMsg(t, c) {
+    const m = document.getElementById('msg');
+    m.textContent = t; m.className = 'status-msg ' + c; m.style.display = 'block';
+}
+
+function hideMsg() {
+    document.getElementById('msg').style.display = 'none';
+}
+
+// === Finish overlay ===
+function showFinishOverlay() {
+    const total = totalCorrect + totalWrong;
+    const acc = total > 0 ? Math.round((totalCorrect / total) * 100) + '%' : '—';
+    document.getElementById('finish-total').textContent = total;
+    document.getElementById('finish-correct').textContent = totalCorrect;
+    document.getElementById('finish-wrong').textContent = totalWrong;
+    document.getElementById('finish-acc').textContent = acc;
+    document.getElementById('finish-overlay').style.display = 'flex';
+    document.getElementById('finish-overlay').setAttribute('aria-hidden', 'false');
+}
+
+function hideFinishOverlay() {
+    document.getElementById('finish-overlay').style.display = 'none';
+    document.getElementById('finish-overlay').setAttribute('aria-hidden', 'true');
+}
+
+document.getElementById('finish-restart-btn').onclick = () => {
+    clearProgress();
+    document.getElementById('abort-btn').style.display = 'none';
+    hideFinishOverlay();
+    openChapterModal();
+};
+
+// === Zoom image ===
+function zoomImage(src) {
+    const overlay = document.createElement('div');
+    overlay.className = 'image-overlay';
+    overlay.onclick = () => overlay.remove();
+    const img = document.createElement('img');
+    img.src = src;
+    overlay.appendChild(img);
+    document.body.appendChild(overlay);
+}
+
+// === Wrong book ===
+const WRONG_BOOK_KEY = 'ig-quiz-wrong-book';
+
+function getWrongBook() {
+    try { return JSON.parse(localStorage.getItem(WRONG_BOOK_KEY) || '[]'); } catch { return []; }
+}
+
+function saveWrongBook(records) {
+    try { localStorage.setItem(WRONG_BOOK_KEY, JSON.stringify(records)); } catch (e) {}
+}
+
+function addWrongQuestionRecord(qItem, qNumber) {
+    if (!qItem) return;
+    const records = getWrongBook();
+    records.push({
+        question: qItem.q,
+        img: !!qItem.img,
+        questionIndex: qNumber,
+        answer: qItem.a,
+        timestamp: Date.now()
+    });
+    saveWrongBook(records);
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function renderWrongBook() {
+    const container = document.getElementById('wrong-book-list');
+    const records = getWrongBook();
+    if (!records.length) {
+        container.innerHTML = '<p>暂无错题。</p>';
+        return;
+    }
+    container.innerHTML = '<div class="wrong-book-section"><div class="wrong-book-section-title">全部错题<span class="wrong-book-count">共 ' + records.length + ' 题</span></div><div class="wrong-book-section-items">' +
+        records.map((item, i) => `
+      <div class="wrong-book-item">
+        <div class="wrong-book-meta"><strong>#${i + 1}</strong></div>
+        <div class="wrong-book-question"><strong>Q${item.questionIndex || '?'}:</strong> ${item.img ? '<img src="questions/' + escapeHtml(item.question) + '" style="max-width:200px;border-radius:4px;cursor:zoom-in;" onclick="zoomImage(this.src)">' : escapeHtml(item.question)}</div>
+        <div class="wrong-book-answer"><strong>正确答案:</strong> ${escapeHtml(item.answer)}</div>
+      </div>
+    `).join('') + '</div></div>';
+}
+
+function openWrongBook() {
+    renderWrongBook();
+    const o = document.getElementById('wrong-book-overlay');
+    o.style.display = 'flex'; o.setAttribute('aria-hidden', 'false');
+}
+function closeWrongBook() {
+    const o = document.getElementById('wrong-book-overlay');
+    o.style.display = 'none'; o.setAttribute('aria-hidden', 'true');
+}
+function clearAllWrongBook() {
+    if (!window.confirm('确定要清空错题本中的全部记录吗？\n此操作无法撤销。')) return;
+    saveWrongBook([]); renderWrongBook();
+}
+
+// === Admin ===
+let testAllAnswersCorrect = (function () {
+    try { return localStorage.getItem('allAnswersCorrectMode') === 'true'; } catch (e) { return false; }
+})();
+
+function openAdminPanel() {
+    document.getElementById('admin-overlay').style.display = 'flex';
+    document.getElementById('admin-overlay').setAttribute('aria-hidden', 'false');
+}
+function closeAdminPanel() {
+    document.getElementById('admin-overlay').style.display = 'none';
+    document.getElementById('admin-overlay').setAttribute('aria-hidden', 'true');
+}
+
+function updateAnswerTestToggleButton() {
+    const btn = document.getElementById('toggle-answer-test-btn');
+    btn.textContent = testAllAnswersCorrect ? 'All Answers Correct: ON' : 'All Answers Correct: OFF';
+    btn.classList.toggle('is-on', testAllAnswersCorrect);
+}
+
+// === Event bindings ===
+document.getElementById('start-game-btn2').onclick = confirmChapterSelection;
+document.getElementById('back-to-names-btn').onclick = closeChapterModal;
+document.getElementById('reselect-chapters-btn').onclick = () => { clearProgress(); document.getElementById('abort-btn').style.display = 'none'; openChapterModal(); };
+document.getElementById('abort-btn').onclick = abortQuiz;
+document.getElementById('wrong-book-btn').onclick = openWrongBook;
+document.getElementById('wrong-book-clear-all').onclick = clearAllWrongBook;
+document.getElementById('wrong-book-close').onclick = closeWrongBook;
+document.getElementById('wrong-book-panel').addEventListener('click', (e) => e.stopPropagation());
+document.getElementById('wrong-book-overlay').addEventListener('click', closeWrongBook);
+document.getElementById('toggle-answer-test-btn').onclick = function () {
+    testAllAnswersCorrect = !testAllAnswersCorrect;
+    try { localStorage.setItem('allAnswersCorrectMode', String(testAllAnswersCorrect)); } catch (e) {}
+    updateAnswerTestToggleButton();
+};
+updateAnswerTestToggleButton();
+document.getElementById('admin-panel').addEventListener('click', (e) => e.stopPropagation());
+document.getElementById('admin-overlay').addEventListener('click', closeAdminPanel);
+document.getElementById('admin-close').onclick = closeAdminPanel;
+
+// === Restore progress on boot ===
+(function bootQuiz() {
+    const saved = loadProgress();
+    if (saved && saved.deepQuestions && saved.deepQuestions.length > 0) {
+        deepQuestions = saved.deepQuestions;
+        questionIndex = saved.questionIndex || 0;
+        totalCorrect = saved.totalCorrect || 0;
+        totalWrong = saved.totalWrong || 0;
+        document.getElementById('progress-bar').style.display = 'block';
+        document.getElementById('score-display').style.display = 'flex';
+        document.getElementById('abort-btn').style.display = 'block';
+        if (questionIndex >= deepQuestions.length) {
+            showFinishOverlay();
+        } else {
+            currentQuestionItem = deepQuestions[questionIndex];
+            isAnswering = true;
+            renderCurrentQuestion();
+            updateScoreDisplay();
+        }
+    }
+})();
+
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    const wb = document.getElementById('wrong-book-overlay');
+    if (wb && wb.style.display === 'flex') { closeWrongBook(); return; }
+    const ch = document.getElementById('chapter-modal');
+    if (ch && ch.style.display === 'flex') { closeChapterModal(); return; }
+    const overlay = document.getElementById('admin-overlay');
+    if (overlay && overlay.style.display === 'flex') closeAdminPanel();
+});
+
+</script>
+</body>
+</html>

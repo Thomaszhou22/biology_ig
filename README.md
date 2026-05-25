@@ -1,4 +1,4 @@
-# Biology Jump — IGCSE Edition 🐸
+# Biology — IGCSE Edition 🐸
 
 <div align="center">
 
@@ -18,13 +18,13 @@
 
 ## 🌍 Mission
 
-**Free education for every CIE student worldwide.** Biology Jump is a board-game-style revision tool that makes studying IGCSE Biology (0610) engaging and accessible — no signup, no paywall, no installation. Just open and play.
+**Free education for every CIE student worldwide.** Biology is a board-game-style revision tool that makes studying IGCSE Biology (0610) engaging and accessible — no signup, no paywall, no installation. Just open and play.
 
 Built by a student, for students.
 
 ## ✨ Features
 
-### 📚 Complete Question Bank (744 Questions)
+### 📚 Complete Question Bank (770 Questions)
 
 | Chapter | Topic | Questions |
 |---------|-------|-----------|
