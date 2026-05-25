@@ -18,7 +18,7 @@
 
 ## 🌍 Mission
 
-**Free education for every CIE student worldwide.** Biology is a board-game-style revision tool that makes studying IGCSE Biology (0610) engaging and accessible — no signup, no paywall, no installation. Just open and play.
+**Free education for every CIE student worldwide.** Biology is an interactive revision tool that makes studying IGCSE Biology (0610) engaging and accessible — no signup, no paywall, no installation. Just open and play.
 
 Built by a student, for students.
 
@@ -50,8 +50,8 @@ Built by a student, for students.
 | Ch 20 | Biotechnology and Genetic Engineering | 45 |
 | Ch 21 | Human Influences on Ecosystems | 34 |
 
-### 🎮 Gameplay
-- **Board game format** — roll dice, answer questions, race to finish
+### 📝 Practice Modes
+- **Chapter-based practice — select chapters, answer questions, track progress
 - **Single player or 2-player** mode
 - **Chapter selection** — pick any combination of chapters to practice
 - **Image questions** — every question has a clear image
