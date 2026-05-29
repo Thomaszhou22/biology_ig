@@ -192,6 +192,7 @@ body > * { position: relative; z-index: 1; }
         <button type="button" id="ai-settings-toggle" title="Configure AI API Key to analyze weak knowledge points and study suggestions">🔑 API Key</button>
         <button type="button" id="ai-analyze-top-btn" title="Analyze mistakes with AI" style="padding:10px 20px;border-radius:14px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.25);transition:all 0.25s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(245,158,11,0.25)'" disabled>🧠 AI Analyze</button>
         <button type="button" id="ai-demo-btn" title="View a demo of the AI analysis feature" style="padding:10px 20px;border-radius:14px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.25);transition:all 0.25s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(245,158,11,0.25)'">🎬 Demo</button>
+        <button type="button" id="mock-exam-btn" title="Start a 45-minute mock exam with 40 weighted questions" style="padding:10px 20px;border-radius:14px;border:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(124,58,237,0.25);transition:all 0.25s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(124,58,237,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(124,58,237,0.25)'">📝 Mock Exam</button>
     </div>
 
     <!-- AI Result Modal -->
@@ -266,6 +267,16 @@ body > * { position: relative; z-index: 1; }
             <span>✅ <span class="correct-count" id="correct-count">0</span></span>
             <span>❌ <span class="wrong-count" id="wrong-count">0</span></span>
             <span>Remaining <span class="total-count" id="remaining-count">0</span></span>
+        </div>
+        <!-- Mock Exam Timer Bar -->
+        <div id="mock-timer-container" style="display:none;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:10px;background:rgba(0,0,0,0.06);border-radius:10px;overflow:hidden;">
+              <div id="mock-timer-fill" style="height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa,#7c3aed);background-size:200% 100%;border-radius:10px;transition:width 1s linear;animation:shimmer 3s linear infinite;width:0%;"></div>
+            </div>
+            <span id="mock-timer-text" style="font-size:13px;font-weight:700;color:#7c3aed;white-space:nowrap;min-width:60px;text-align:right;">45:00</span>
+            <button type="button" id="mock-timer-hide" style="border:1px solid rgba(124,58,237,0.2);border-radius:8px;background:rgba(255,255,255,0.8);font-size:11px;font-weight:600;cursor:pointer;color:#7c3aed;padding:3px 10px;white-space:nowrap;">Hide</button>
+          </div>
         </div>
         <div id="question-area">
             <div id="question-box">
@@ -1433,6 +1444,157 @@ persistAI = function() {
   document.getElementById('ai-analyze-top-btn').disabled = !s.provider || !s.apiKey;
 };
 
-</script>
+// === Mock Exam Feature ===
+const MOCK_EXAM_DURATION = 45 * 60; // 45 minutes in seconds
+const MOCK_EXAM_COUNT = 40;
+let mockTimerInterval = null;
+let mockTimeRemaining = 0;
+let isMockExam = false;
+let timerHidden = false;
+
+function startMockExam() {
+  // Collect all questions from all chapters
+  const allQuestions = [];
+  for (const ch of QUESTION_CHAPTERS) {
+    for (let i = 1; i <= (ch.count || 0); i++) {
+      const num = String(i).padStart(2, '0');
+      const qPath = ch.id + '/q' + num + '.jpg';
+      const ans = ch.answers ? ch.answers[i - 1] : null;
+      allQuestions.push({ q: qPath, img: true, a: ans ? ans.a : '?', chapter: ch.name });
+    }
+  }
+
+  if (allQuestions.length < MOCK_EXAM_COUNT) {
+    alert('Not enough questions for a mock exam.'); return;
+  }
+
+  // Build wrong-question weighted selection
+  const wrongRecords = getWrongBook();
+  const wrongByQuestion = {};
+  const wrongByChapter = {};
+  for (const r of wrongRecords) {
+    const qp = r.question || '';
+    wrongByQuestion[qp] = (wrongByQuestion[qp] || 0) + 1;
+    const chId = qp.split('/')[0];
+    wrongByChapter[chId] = (wrongByChapter[chId] || 0) + 1;
+  }
+  const totalWrongCount = Object.values(wrongByChapter).reduce((s, c) => s + c, 0) || 0;
+
+  // Weight each question: wrong questions get 3x, chapters with more wrongs get boost
+  const weighted = allQuestions.map(q => {
+    const chId = q.q.split('/')[0];
+    const isWrong = (wrongByQuestion[q.q] || 0) > 0;
+    const chapterWrongRatio = totalWrongCount > 0 ? (wrongByChapter[chId] || 0) / totalWrongCount : 0;
+    let w = 1;
+    if (isWrong) w += 3;
+    // Boost chapters that have wrong records
+    if (chapterWrongRatio > 0) w += chapterWrongRatio * 2;
+    return { ...q, _w: w };
+  });
+
+  // Weighted random selection without replacement
+  const picked = [];
+  const remaining = weighted.slice();
+  while (picked.length < MOCK_EXAM_COUNT && remaining.length > 0) {
+    const totalW = remaining.reduce((s, q) => s + q._w, 0);
+    let r = Math.random() * totalW;
+    for (let i = 0; i < remaining.length; i++) {
+      r -= remaining[i]._w;
+      if (r <= 0) { picked.push(remaining[i]); remaining.splice(i, 1); break; }
+    }
+  }
+
+  // Shuffle picked questions
+  for (let i = picked.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [picked[i], picked[j]] = [picked[j], picked[i]];
+  }
+
+  deepQuestions = picked;
+  activeChapters = QUESTION_CHAPTERS.map(c => c.id);
+  isMockExam = true;
+  mockTimeRemaining = MOCK_EXAM_DURATION;
+  timerHidden = false;
+
+  // Show timer bar
+  const timerContainer = document.getElementById('mock-timer-container');
+  timerContainer.style.display = 'block';
+  document.getElementById('mock-timer-text').textContent = formatTime(mockTimeRemaining);
+  document.getElementById('mock-timer-fill').style.width = '0%';
+  document.getElementById('mock-timer-hide').textContent = 'Hide';
+
+  // Start timer
+  if (mockTimerInterval) clearInterval(mockTimerInterval);
+  mockTimerInterval = setInterval(() => {
+    mockTimeRemaining--;
+    if (mockTimeRemaining <= 0) {
+      mockTimeRemaining = 0;
+      clearInterval(mockTimerInterval);
+      mockTimerInterval = null;
+      // Time's up — force finish
+      showMsg('⏰ Time\'s up!', 'incorrect');
+      setTimeout(() => { hideMsg(); questionIndex = deepQuestions.length; showFinishOverlay(); clearProgress(); isMockExam = false; }, 1500);
+    }
+    const elapsed = MOCK_EXAM_DURATION - mockTimeRemaining;
+    const pct = Math.round((elapsed / MOCK_EXAM_DURATION) * 100);
+    document.getElementById('mock-timer-fill').style.width = pct + '%';
+    document.getElementById('mock-timer-text').textContent = formatTime(mockTimeRemaining);
+    // Color shift as time runs out
+    const timerText = document.getElementById('mock-timer-text');
+    const timerFill = document.getElementById('mock-timer-fill');
+    if (mockTimeRemaining <= 300) { // last 5 min
+      timerText.style.color = '#dc2626'; timerFill.style.background = 'linear-gradient(90deg,#dc2626,#f87171,#dc2626)';
+    } else if (mockTimeRemaining <= 600) { // last 10 min
+      timerText.style.color = '#d97706'; timerFill.style.background = 'linear-gradient(90deg,#d97706,#fbbf24,#d97706)';
+    }
+  }, 1000);
+
+  preloadImagesAndStart();
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function toggleMockTimer() {
+  timerHidden = !timerHidden;
+  const fill = document.getElementById('mock-timer-fill').parentElement;
+  const text = document.getElementById('mock-timer-text');
+  const btn = document.getElementById('mock-timer-hide');
+  if (timerHidden) {
+    fill.style.display = 'none';
+    text.style.display = 'none';
+    btn.textContent = 'Show';
+  } else {
+    fill.style.display = '';
+    text.style.display = '';
+    btn.textContent = 'Hide';
+  }
+}
+
+// Override abortQuiz to also clean up mock timer
+const origAbortQuiz = abortQuiz;
+abortQuiz = function() {
+  if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
+  isMockExam = false;
+  document.getElementById('mock-timer-container').style.display = 'none';
+  origAbortQuiz();
+};
+
+// Override showFinishOverlay to clean up mock timer
+const origShowFinishOverlay = showFinishOverlay;
+showFinishOverlay = function() {
+  if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
+  document.getElementById('mock-timer-container').style.display = 'none';
+  isMockExam = false;
+  origShowFinishOverlay();
+};
+
+document.getElementById('mock-exam-btn').onclick = startMockExam;
+document.getElementById('mock-timer-hide').onclick = toggleMockTimer;
+
+
 </body>
 </html>
