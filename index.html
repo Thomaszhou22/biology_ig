@@ -1591,6 +1591,8 @@ showFinishOverlay = function() {
   document.getElementById('mock-timer-container').style.display = 'none';
   isMockExam = false;
   origShowFinishOverlay();
+  // Keep Quit button visible after mock exam ends
+  document.getElementById('abort-btn').style.display = 'block';
 };
 
 document.getElementById('mock-exam-btn').onclick = startMockExam;
