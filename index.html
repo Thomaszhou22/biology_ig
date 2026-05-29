@@ -173,7 +173,10 @@ body > * { position: relative; z-index: 1; }
 @media (min-width: 641px) and (max-width: 1024px) {
   /* Tablet */
   #info-panel { max-width: 90vw; }
-  .fixed-btns { flex-wrap: wrap; right: 10px; top: 10px; }
+  .fixed-btns { flex-wrap: nowrap; right: 10px; top: 10px; gap: 6px; }
+  .fixed-btns button { font-size: 12px !important; padding: 8px 14px !important; white-space: nowrap; }
+  .page-title { margin-top: 60px; }
+  #info-panel { margin-top: 100px; }
   .option-btn { padding: 13px; font-size: 16px; }
 }
     </style>
