@@ -259,6 +259,7 @@ body > * { position: relative; z-index: 1; }
             <div style="font-size: 16px; font-weight: bold;">
                 <span id="question-counter">Select chapters to start</span>
             </div>
+            <div id="auth-box" style="display:flex;align-items:center;gap:8px;"></div>
             <button type="button" id="mock-exam-btn" title="Start a 45-minute mock exam with 40 weighted questions" style="padding:8px 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-size:12px;font-family:inherit;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(124,58,237,0.25);transition:all 0.25s;white-space:nowrap;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(124,58,237,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(124,58,237,0.25)'">📝 Mock Exam</button>
         </div>
         <div class="progress-bar" id="progress-bar" style="display:none;">
@@ -902,6 +903,9 @@ function handleAnswer(letter, clickedBtn) {
         showMsg(`❌ Wrong! Correct answer: ${qItem.a}`, 'incorrect');
         addWrongQuestionRecord(qItem, questionIndex + 1);
     }
+
+    // 云端上报（未登录时为 no-op）—— auth.js
+    if (typeof recordAnswerCloud === 'function') recordAnswerCloud(qItem, correct);
 
     updateScoreDisplay();
 
@@ -1599,5 +1603,6 @@ document.getElementById('mock-exam-btn').onclick = startMockExam;
 document.getElementById('mock-timer-hide').onclick = toggleMockTimer;
 
 </script>
+<script src="auth.js"></script>
 </body>
 </html>
