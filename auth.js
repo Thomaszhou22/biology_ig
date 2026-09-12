@@ -38,6 +38,10 @@ async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+// 加盐哈希：sha256(password + student_id)，每用户盐不同，彩虹表失效
+async function passHash(sid, pass) {
+  return await sha256Hex(pass + sid);
+}
 
 function escapeAuthHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -113,8 +117,8 @@ async function doGateAuth() {
   msg.style.color = '#64748b';
   msg.textContent = 'Please wait…';
   try {
-    const hash = await sha256Hex(pass);
-    const users = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${sid}&select=student_id,pass_hash`);
+    const hash = await passHash(sid, pass);
+    const users = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${sid}&select=student_id`);
     if (gateMode === 'signup') {
       if (users && users.length) { msg.style.color = '#ef4444'; msg.textContent = 'This student ID is already registered — sign in instead'; return; }
       await sbFetch(`/rest/v1/${SB_TABLE_USERS}`, { method: 'POST', body: JSON.stringify({ student_id: sid, pass_hash: hash }) });
@@ -127,7 +131,9 @@ async function doGateAuth() {
         document.getElementById('gate-pass2').focus();
         return;
       }
-      if (users[0].pass_hash !== hash) { msg.style.color = '#ef4444'; msg.textContent = 'Wrong password'; return; }
+      // 服务端校验（verify_ig_login RPC，带 0.3s 防暴力限速）
+      const ok = await sbFetch(`/rest/v1/rpc/verify_ig_login?p_sid=${encodeURIComponent(sid)}&p_pass=${encodeURIComponent(pass)}`);
+      if (ok !== true) { msg.style.color = '#ef4444'; msg.textContent = 'Wrong password'; return; }
     }
     currentUser = { studentId: sid };
     sessionStorage.setItem('ig-auth-user', JSON.stringify(currentUser));

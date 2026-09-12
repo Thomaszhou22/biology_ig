@@ -1,102 +1,99 @@
-# Biology — IGCSE Edition 🐸
+# IG Biology Quiz
 
-<div align="center">
+**Cambridge IGCSE Biology (0610) practice platform — 777 questions · 21 chapters · accounts, mock exams, 1v1 PK, leaderboards.**
 
-[English](#english) | [中文](./README_CN.md)
+[![Live](https://img.shields.io/badge/Live-igmcq.com-f59e0b)](https://igmcq.com)
+[![GitHub Pages](https://img.shields.io/badge/GitHub-Pages-blue)](https://thomaszhou22.github.io/biology_ig/)
+[![Vercel](https://img.shields.io/badge/Vercel-deployed-black)](https://biologyjumpig.vercel.app)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-[![GitHub stars](https://img.shields.io/github/stars/Thomaszhou22/biology_jump_ig?style=social)](https://github.com/Thomaszhou22/biology_jump_ig/stargazers)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![itch.io](https://img.shields.io/badge/itch.io-Play%20Free-FA5C50?logo=itch.io&logoColor=white)](https://thomaszhou22.itch.io/biology-jump-igcse)
+**▶ Play now: [igmcq.com](https://igmcq.com)** (China-friendly custom domain, no VPN needed)
 
-[Play on itch.io](https://thomaszhou22.itch.io/biology-jump-igcse) | [GitHub Pages](https://thomaszhou22.github.io/biology_ig/) | [Contributing](./CONTRIBUTING.md)
-
-</div>
-
----
-
-## 🎉 Major Update — Now on itch.io!
-
-Both Biology IG and Biology AS are now available on **itch.io** — the world's largest indie platform. Play directly in your browser, no download needed!
-
-- 🎮 [Biology — IGCSE Edition on itch.io](https://thomaszhou22.itch.io/biology-jump-igcse)
-- 🎮 [Biology — AS Level Edition on itch.io](https://thomaszhou22.itch.io/biology-jump-as)
-
-<a id="english"></a>
-
-## 🌍 Mission
-
-**Free education for every CIE student worldwide.** Biology is an interactive revision tool that makes studying IGCSE Biology (0610) engaging and accessible — no signup, no paywall, no installation. Just open and play.
-
-Built by a student, for students.
-
-## ✨ Features
-
-### 📚 Complete Question Bank (777 Questions)
-
-| Chapter | Topic | Questions |
-|---------|-------|-----------|
-| Ch 1 | Characteristics and Classification | 45 |
-| Ch 2 | Organization and Maintenance | 45 |
-| Ch 3 | Movement in and out of Cells | 45 |
-| Ch 4 | Biological Molecules | 33 |
-| Ch 5 | Enzymes | 26 |
-| Ch 6 | Plant Nutrition | 32 |
-| Ch 7 | Human Nutrition | 36 |
-| Ch 8 | Transport in Plants | 37 |
-| Ch 9 | Transport in Animals | 34 |
-| Ch 10 | Diseases and Immunity | 27 |
-| Ch 11 | Gas Exchange in Humans | 27 |
-| Ch 12 | Respiration | 32 |
-| Ch 13 | Excretion in Humans | 30 |
-| Ch 14 | Coordination and Response | 49 |
-| Ch 15 | Drugs | 28 |
-| Ch 16 | Reproduction | 41 |
-| Ch 17 | Inheritance | 41 |
-| Ch 18 | Variation and Selection | 40 |
-| Ch 19 | Organisms and their Environment | 50 |
-| Ch 20 | Biotechnology and Genetic Engineering | 45 |
-| Ch 21 | Human Influences on Ecosystems | 34 |
-
-### 📝 Practice Modes
-- **Chapter-based practice — select chapters, answer questions, track progress
-- **Single player or 2-player** mode
-- **Chapter selection** — pick any combination of chapters to practice
-- **Image questions** — every question has a clear image
-
-### 📖 Study Tools
-- **Mistake Collection** — automatically tracks wrong answers for review
-- **Instant feedback** — see correct answers immediately
-- **Progress saving** — resume anytime with localStorage
-
-## 🚀 Play Now
-
-**No download needed.** Choose your platform:
-
-| Platform | Link | Notes |
-|----------|------|-------|
-| 🎮 itch.io | [Play in browser](https://thomaszhou22.itch.io/biology-jump-igcse) | Best experience |
-| 🌐 GitHub Pages | [Open](https://thomaszhou22.github.io/biology_ig/) | Alternative mirror |
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to:
-
-- Add new questions
-- Fix errors in existing questions
-- Translate the interface
-- Report issues
-
-## 🛠️ Tech Stack
-
-- **Pure HTML + CSS + JavaScript** — zero frameworks, zero dependencies
-- **Image-based questions** stored by chapter
-- **localStorage** for progress saving
-- **Deployed** on GitHub Pages & itch.io
-
-## 📄 License
-
-[MIT License](./LICENSE) — free to use, modify, and distribute.
+Backup mirrors: [biologyjumpig.vercel.app](https://biologyjumpig.vercel.app) · [thomaszhou22.github.io/biology_ig](https://thomaszhou22.github.io/biology_ig/)
 
 ---
 
-*Made with ❤️ for CIE students everywhere.*
+## Features
+
+### Quiz
+- Chapter selection with per-chapter question limits
+- Wrong-answer tracking with per-question wrong counts
+- Adaptive weighting: the more times you get a question wrong, the more often it reappears (2+2n, capped at 10×)
+- Session buffering: quit mid-quiz and nothing counts; finish it and everything commits
+
+### Mistake Collection
+- Grouped by chapter, lazy-loaded images (click a chapter to expand)
+- Wrong-count badges (×2 orange, ×3+ red)
+- **Generate a Paper from Mistakes**: weighted sampling by wrong count, chapter selection, count capped at available mistakes — mistakes are permanent, the only way out is to get them right
+- Runs at its own URL: `/mistakes/paper`
+
+### Mock Exam
+- 45-minute, 40-question weighted exam (wrong questions appear more often)
+- AIME-style answer grid: blue fill = answered, blue outline = blank, orange dot = flagged, click to jump
+- Silent answering: no correct/wrong reveal, answers changeable, Previous/Next navigation
+- Mid-exam navigation locked (Home auto-settles); quit returns to the mock landing page
+- Refresh-safe: exam state persists across reloads (answers, flags, timer)
+- Result card: answered/unanswered breakdown, accuracy
+
+### 1v1 PK
+- Room-based duels: create a room (chapter select, 5–50 questions), opponent joins with a 4-character code
+- Synchronized 3-2-1 countdown, same questions in the same order
+- Time-based scoring: `max(100, 1500 − 50/s)` — answer in 10s for 1000 points, wrong = 0
+- Live scoreboard synced every 1.5s; settles only when both players finish
+- PK history (last 50 duels, local) + cloud PK leaderboard ranked by wins
+
+### Leaderboards
+- **Quiz board**: ranked by correct answers (questions × accuracy, hidden computation), per-question dedup so re-answering can't farm score
+- **PK board**: ranked by wins, with W/L/T breakdown
+- Gold/silver/bronze for top 3, your row highlighted
+
+### Accounts
+- Student-ID login (8 digits, validated), signup with password confirmation
+- Passwords stored as salted SHA-256 (per-user salt); verification runs server-side via a rate-limited RPC — password hashes are never readable by the client
+- Answers and PK results sync to the cloud per-account
+
+## Architecture
+
+```
+Browser (static SPA, zero build step)
+  ├── GitHub Pages / Vercel   — static hosting + CDN
+  ├── igmcq.com               — custom domain (Cloudflare DNS → Vercel)
+  └── api.igmcq.com           — Cloudflare Worker relay → Supabase (China-friendly)
+        └── Supabase Postgres — users, answers, PK rooms/results (RLS-hardened)
+```
+
+- **No build tooling**: plain HTML/JS/CSS — `pk.js`, `auth.js`, `app.js` layered on the original single-file quiz engine
+- **China access**: custom domain + Worker relay means students need no VPN
+- **Data safety (4 layers)**: column-level grants hide password hashes; login via `SECURITY DEFINER` RPC with 0.3s anti-brute-force delay; answers/PK records are insert+select only (no client-side edits or deletes); input constraints on every table
+
+## Pages
+
+| URL | Content |
+|---|---|
+| `/` | Quiz (chapter select) |
+| `/mock-exam` | Mock exam |
+| `/pk` | 1v1 PK |
+| `/mistakes` | Mistake collection (+ paper generator) |
+| `/mistakes/paper` | Mistake paper runner |
+| `/leaderboard` | Quiz + PK leaderboards |
+| `/ai-analysis` | AI analysis (bring your own API key) |
+
+## Tech Stack
+
+Vanilla JS · Supabase (Postgres + RLS + RPC) · Cloudflare Workers · Vercel · GitHub Pages · Lucide icons (inline SVG)
+
+## Setup
+
+```bash
+git clone https://github.com/Thomaszhou22/biology_jump_ig.git
+cd biology_jump_ig
+python3 -m http.server 8901   # any static server
+```
+
+Database setup: run the SQL files in order in Supabase SQL Editor —
+`supabase-ig-setup.sql` → `supabase-pk-setup.sql` → `supabase-security-hardening.sql`.
+Update the Supabase URL/key in `auth.js`/`pk.js` if using your own project.
+
+## License
+
+MIT
