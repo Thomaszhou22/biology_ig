@@ -97,10 +97,11 @@ async function pkTryResume() {
 }
 
 // ============ PK 云端排行榜 ============
-async function loadPKLeaderboard() {
-  // 已注册用户全部上榜（无 PK 记录显示 0）
+async function loadPKLeaderboard(period) {
+  // 已注册用户全部上榜（无 PK 记录显示 0）；period: week/month/all
+  const table = period === 'week' ? 'pk_results_week' : period === 'month' ? 'pk_results_month' : 'pk_results';
   const users = await pkApi('/rest/v1/ig_users?select=student_id&limit=1000');
-  const rows = await pkApi('/rest/v1/pk_results?select=student_id,result&limit=10000');
+  const rows = await pkApi(`/rest/v1/${table}?select=student_id,result&limit=10000`);
   const agg = new Map();
   for (const u of users || []) {
     agg.set(u.student_id, { student_id: u.student_id, wins: 0, losses: 0, ties: 0, total: 0 });

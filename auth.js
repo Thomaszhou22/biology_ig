@@ -169,8 +169,9 @@ function renderDrawerUser() {
 
 // 供 app.js 使用的接口
 function igCurrentUser() { return currentUser; }
-async function loadLeaderboardRows() {
-  return await sbFetch('/rest/v1/ig_leaderboard?select=*&order=unique_questions.desc&limit=100');
+async function loadLeaderboardRows(period) {
+  const view = period === 'week' ? 'ig_leaderboard_week' : period === 'month' ? 'ig_leaderboard_month' : 'ig_leaderboard';
+  return await sbFetch(`/rest/v1/${view}?select=*&order=unique_questions.desc&limit=100`);
 }
 
 // === 登录后顶栏 UI（排行榜 + 退出）===

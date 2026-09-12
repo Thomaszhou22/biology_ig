@@ -12,6 +12,7 @@ const ICONS = {
   sparkles: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>',
   github: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1.17-.02-2.12-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12 0 1.53-.01 2.76-.01 3.14 0 .31.2.68.8.56A10.52 10.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>',
   gear: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>',
+  user: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   swords: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></svg>',
   quiz: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>',
   logout: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
@@ -26,14 +27,15 @@ const PAGES = [
   { id: 'pk', label: '1v1 PK', icon: 'swords' },
   { id: 'mistakes', label: 'Mistake Collection', icon: 'book' },
   { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy' },
-  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' }
+  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' },
+  { id: 'account', label: 'Account', icon: 'user' }
 ];
 
 let currentPage = 'home';
 let infoPanelHome = null; // #info-panel 的原始父容器
 
 // === URL 路由（真分页：/leaderboard 等）===
-const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', 'mistakes/paper': '/mistakes/paper', leaderboard: '/leaderboard', ai: '/ai-analysis', pk: '/pk' };
+const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', 'mistakes/paper': '/mistakes/paper', leaderboard: '/leaderboard', ai: '/ai-analysis', pk: '/pk', account: '/account' };
 // 站点根：剥掉 index.html 与任何已知路由后缀（/mock-exam/leaderboard 这类嵌套也剥干净）
 let BASE = location.pathname.replace(/\/index\.html?$/, '');
 let _again = true;
@@ -157,7 +159,9 @@ function buildShell() {
     d.querySelector('[data-back]').onclick = () => navigate('home');
     return d;
   };
-  mk('mock'); mk('mistakes'); mk('leaderboard'); mk('ai'); mk('pk');
+  mk('mock'); mk('mistakes'); mk('leaderboard'); mk('ai'); mk('pk'); mk('account');
+  const accClose = document.querySelector('#view-account .view-close');
+  if (accClose) accClose.remove();
   // PK 页去掉关闭叉（完整页面）
   const pkClose = document.querySelector('#view-pk .view-close');
   if (pkClose) pkClose.remove();
@@ -258,6 +262,7 @@ function navigate(page, push) {
     if (page === 'leaderboard') renderLeaderboardView();
     if (page === 'ai') renderAiView();
     if (page === 'pk' && typeof renderPKView === 'function') renderPKView();
+    if (page === 'account') renderAccountPage();
     if (page === 'mock') renderMockView();
   }
 }
@@ -424,21 +429,32 @@ async function renderLeaderboardView(tab) {
   renderLeaderboardView._tab = tab;
   $('view-leaderboard-title').innerHTML = ICONS.trophy + ' Leaderboard';
   const body = $('view-leaderboard-body');
+  const period = renderLeaderboardView._period || 'all';
+  renderLeaderboardView._period = period;
+  const pbtn = (id, label, on) => `<button id="lb-p-${id}" class="topbar-btn" style="flex:1;${on ? 'background:#334155;color:#fff;border:none;' : 'background:#fff;border:1.5px solid rgba(51,65,85,.15);color:#64748b;'}">${label}</button>`;
   body.innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:16px;">
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button id="lb-tab-quiz" class="topbar-btn" style="flex:1;${tab === 'quiz' ? 'background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;' : 'background:#fff;border:1.5px solid rgba(180,130,70,.15);color:#c4943a;'}">Quiz</button>
       <button id="lb-tab-pk" class="topbar-btn" style="flex:1;${tab === 'pk' ? 'background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;' : 'background:#fff;border:1.5px solid rgba(99,102,241,.2);color:#6366f1;'}">1v1 PK</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      ${pbtn('week', 'Week', period === 'week')}
+      ${pbtn('month', 'Month', period === 'month')}
+      ${pbtn('all', 'All Time', period === 'all')}
     </div>
     <div id="lb-body-inner"></div>
     <div id="lb-quiz-body"></div>`;
   $('lb-tab-quiz').onclick = () => renderLeaderboardView('quiz');
   $('lb-tab-pk').onclick = () => renderLeaderboardView('pk');
+  $('lb-p-week').onclick = () => { renderLeaderboardView._period = 'week'; renderLeaderboardView(tab); };
+  $('lb-p-month').onclick = () => { renderLeaderboardView._period = 'month'; renderLeaderboardView(tab); };
+  $('lb-p-all').onclick = () => { renderLeaderboardView._period = 'all'; renderLeaderboardView(tab); };
   const inner = $('lb-body-inner');
 
   if (tab === 'pk') {
     inner.innerHTML = `<p class="page-empty">Loading…</p>`;
     try {
-      const data = (typeof loadPKLeaderboard === 'function') ? await loadPKLeaderboard() : [];
+      const data = (typeof loadPKLeaderboard === 'function') ? await loadPKLeaderboard(period) : [];
       if (!data.length) { inner.innerHTML = `<p class="page-empty">No PK records yet — challenge someone!</p>`; return; }
       const me = (typeof igCurrentUser === 'function') && igCurrentUser();
       const names = (typeof igPrefetchNames === 'function') ? await igPrefetchNames(data.map(r => r.student_id)) : {};
@@ -470,7 +486,7 @@ async function renderLeaderboardView(tab) {
   const qb = $('lb-quiz-body');
   qb.innerHTML = `<p class="page-empty">Loading…</p>`;
   try {
-    let data = (typeof loadLeaderboardRows === 'function') ? await loadLeaderboardRows() : null;
+    let data = (typeof loadLeaderboardRows === 'function') ? await loadLeaderboardRows(period) : null;
     if (!data || !data.length) {
       qb.innerHTML = `<p class="page-empty">No records yet — go answer some questions!</p>`;
       return;
@@ -527,7 +543,7 @@ function renderAiView() {
       <div id="ai-page-status" style="font-size:.8rem;color:#78716c;font-weight:600;min-height:1.4em;margin-top:10px;text-align:center;"></div>
       <div id="account-section" style="margin-top:28px;padding-top:20px;border-top:1px solid #ece4d4;"></div>`;
   }
-  if (typeof renderAccountSection === 'function') renderAccountSection();
+  // Account 已独立成页面（菜单项），AI 页不再挂载
   // 把既有设置面板 DOM 移植进来（保留全部绑定逻辑）
   const settings = $('ai-settings-panel');
   const host = $('ai-page-settings');
@@ -574,9 +590,11 @@ document.addEventListener('DOMContentLoaded', shellInit);
 if (document.readyState !== 'loading') shellInit();
 
 
-// ===== Account 区（AI Analysis 页底部）=====
-async function renderAccountSection() {
-  const box = document.getElementById('account-section');
+// ===== Account 独立页面 =====
+async function renderAccountPage() {
+  const tEl = document.getElementById('view-account-title');
+  if (tEl && typeof ICONS !== 'undefined' && ICONS.user) tEl.innerHTML = ICONS.user + ' Account';
+  const box = document.getElementById('view-account-body');
   if (!box) return;
   const me = (typeof igCurrentUser === 'function') && igCurrentUser();
   if (!me) { box.innerHTML = ''; return; }
