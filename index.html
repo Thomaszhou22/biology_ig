@@ -56,6 +56,18 @@ body > * { position: relative; z-index: 1; }
 #mock-prev-btn { background:#fff; color:#64748b; border:2px solid rgba(100,116,139,.18); }
 #mock-next-btn { background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; }
 #mock-nav button:disabled { opacity:.4; cursor:not-allowed; }
+#mock-grid { display:none; position:fixed; right:16px; top:72px; bottom:16px; width:190px; background:#faf6ee; border:1px solid #ece4d4; border-radius:18px; box-shadow:0 1px 3px rgba(0,0,0,.06),0 8px 28px rgba(0,0,0,.08); padding:14px; z-index:4500; overflow-y:auto; box-sizing:border-box; }
+#mock-grid .mg-title { font-size:.78rem; font-weight:800; color:#334155; text-align:center; margin-bottom:10px; letter-spacing:.3px; }
+#mock-grid .mg-cells { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+#mock-grid .mg-cell { position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:800; color:#334155; border:2px solid #6366f1; border-radius:8px; background:#fff; cursor:pointer; transition:all .15s; font-family:inherit; padding:0; }
+#mock-grid .mg-cell.answered { background:#6366f1; color:#fff; }
+#mock-grid .mg-cell.current { box-shadow:0 0 0 3px rgba(99,102,241,.35); }
+#mock-grid .mg-cell .mg-flag-dot { position:absolute; right:2px; bottom:2px; width:7px; height:7px; border-radius:50%; background:#f59e0b; box-shadow:0 0 0 1.5px #fff; }
+#mock-grid .mg-legend { display:flex; gap:10px; justify-content:center; margin-top:10px; font-size:.62rem; color:#a8a29e; font-weight:700; }
+#mock-grid .mg-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:3px; vertical-align:-1px; }
+#mock-flag-btn { background:#fff; color:#d97706; border:2px solid rgba(217,119,6,.3); }
+#mock-flag-btn.flagged { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+@media (max-width:900px) { #mock-grid { display:none !important; } }
 .status-msg { font-weight: 700; text-align: center; padding: 12px; border-radius: 12px; margin-top: 12px; display: none; font-size: 15px; letter-spacing: 0.5px; animation: msgIn 0.3s ease; }
 @keyframes msgIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
 .correct { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border: 1px solid rgba(16,185,129,0.3); }
@@ -307,11 +319,21 @@ body > * { position: relative; z-index: 1; }
                 <div id="options"></div>
                 <div id="mock-nav">
                     <button type="button" id="mock-prev-btn">← Previous</button>
+                    <button type="button" id="mock-flag-btn">⚑ Flag</button>
                     <button type="button" id="mock-next-btn">Next →</button>
                 </div>
             </div>
         </div>
         <div id="msg" class="status-msg"></div>
+    <div id="mock-grid">
+      <div class="mg-title">QUESTIONS</div>
+      <div class="mg-cells" id="mock-grid-cells"></div>
+      <div class="mg-legend">
+        <span><i style="background:#6366f1;"></i>answered</span>
+        <span><i style="border:1.5px solid #6366f1;background:#fff;"></i>blank</span>
+        <span><i style="background:#f59e0b;border-radius:50%;width:7px;height:7px;"></i>flagged</span>
+      </div>
+    </div>
         <div class="controls">
             <button type="button" id="reselect-chapters-btn" class="btn-action" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;">Select Chapters</button>
             <button type="button" id="abort-btn" class="btn-action" style="background:#dc3545;color:white;display:none;margin-top:8px;">Quit Quiz</button>
@@ -915,12 +937,44 @@ function renderCurrentQuestion() {
             });
         }
         updateMockNavState();
+        updateMockGrid();
+        const flagBtn = document.getElementById('mock-flag-btn');
+        if (flagBtn) flagBtn.classList.toggle('flagged', !!mockFlags[questionIndex]);
     } else {
         if (mockNav) mockNav.style.display = 'none';
         if (scoreEl && (totalCorrect + totalWrong) >= 0 && deepQuestions.length) scoreEl.style.display = 'flex';
     }
 }
 
+function buildMockGrid() {
+  const cells = document.getElementById('mock-grid-cells');
+  if (!cells) return;
+  cells.innerHTML = '';
+  deepQuestions.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'mg-cell';
+    b.textContent = i + 1;
+    b.onclick = () => {
+      if (!isMockExam) return;
+      questionIndex = i; currentQuestionItem = deepQuestions[i]; isAnswering = true;
+      renderCurrentQuestion();
+    };
+    cells.appendChild(b);
+  });
+  updateMockGrid();
+}
+function updateMockGrid() {
+  const cells = document.getElementById('mock-grid-cells');
+  if (!cells) return;
+  [...cells.children].forEach((b, i) => {
+    b.classList.toggle('answered', !!mockAnswers[i]);
+    b.classList.toggle('current', i === questionIndex);
+    let dot = b.querySelector('.mg-flag-dot');
+    if (mockFlags[i]) {
+      if (!dot) { dot = document.createElement('span'); dot.className = 'mg-flag-dot'; b.appendChild(dot); }
+    } else if (dot) dot.remove();
+  });
+}
 function updateMockNavState() {
     const prevBtn = document.getElementById('mock-prev-btn');
     const nextBtn = document.getElementById('mock-next-btn');
@@ -943,6 +997,7 @@ function settleMockExam() {
     document.getElementById('mock-timer-container').style.display = 'none';
     const mockNav = document.getElementById('mock-nav');
     if (mockNav) mockNav.style.display = 'none';
+    document.getElementById('mock-grid').style.display = 'none';
     const rsBtn = document.getElementById('reselect-chapters-btn');
     if (rsBtn) rsBtn.style.display = '';
     questionIndex = deepQuestions.length;
@@ -966,6 +1021,7 @@ function handleAnswer(letter, clickedBtn) {
         clickedBtn.classList.add('selected-answer');
         if (typeof recordAnswerCloud === 'function') recordAnswerCloud(qItem, correct);
         updateMockNavState();
+        updateMockGrid();
         return;
     }
 
@@ -1534,6 +1590,7 @@ let mockTimeRemaining = 0;
 let isMockExam = false;
 let timerHidden = false;
 let mockAnswers = {}; // { questionIndex: {letter, correct} }
+let mockFlags = {};  // { questionIndex: true }
 
 function startMockExam() {
   // Collect all questions from all chapters
@@ -1597,11 +1654,14 @@ function startMockExam() {
   activeChapters = QUESTION_CHAPTERS.map(c => c.id);
   isMockExam = true;
   mockAnswers = {};
+  mockFlags = {};
   mockTimeRemaining = MOCK_EXAM_DURATION;
   timerHidden = false;
   // 考试模式：隐藏章节选择（不允许中途换章节）
   const rsBtn = document.getElementById('reselect-chapters-btn');
   if (rsBtn) rsBtn.style.display = 'none';
+  buildMockGrid();
+  document.getElementById('mock-grid').style.display = 'block';
 
   // Show timer bar
   const timerContainer = document.getElementById('mock-timer-container');
@@ -1670,10 +1730,15 @@ abortQuiz = function() {
   document.getElementById('mock-timer-container').style.display = 'none';
   const mockNav = document.getElementById('mock-nav');
   if (mockNav) mockNav.style.display = 'none';
+  document.getElementById('mock-grid').style.display = 'none';
   const rsBtn = document.getElementById('reselect-chapters-btn');
   if (rsBtn) rsBtn.style.display = '';
   origAbortQuiz();
-  if (wasMock) document.getElementById('score-display').style.display = 'none';
+  if (wasMock) {
+    document.getElementById('score-display').style.display = 'none';
+    // 中途退出：回 Mock 落地页（紫色 Start 按钮界面），而不是章节选择首页
+    window.dispatchEvent(new CustomEvent('mock-abandoned'));
+  }
 };
 
 // Override showFinishOverlay to clean up mock timer
@@ -1690,6 +1755,13 @@ showFinishOverlay = function() {
 const _mockBtn = document.getElementById('mock-exam-btn'); if (_mockBtn) _mockBtn.onclick = startMockExam;
 const _mpBtn = document.getElementById('mock-prev-btn');
 if (_mpBtn) _mpBtn.onclick = () => { if (isMockExam && questionIndex > 0) { questionIndex--; currentQuestionItem = deepQuestions[questionIndex]; isAnswering = true; renderCurrentQuestion(); } };
+const _mfBtn = document.getElementById('mock-flag-btn');
+if (_mfBtn) _mfBtn.onclick = () => {
+  if (!isMockExam) return;
+  if (mockFlags[questionIndex]) delete mockFlags[questionIndex]; else mockFlags[questionIndex] = true;
+  _mfBtn.classList.toggle('flagged', !!mockFlags[questionIndex]);
+  updateMockGrid();
+};
 const _mnBtn = document.getElementById('mock-next-btn');
 if (_mnBtn) _mnBtn.onclick = () => {
   if (!isMockExam) return;

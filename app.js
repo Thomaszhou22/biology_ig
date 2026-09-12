@@ -88,6 +88,14 @@ function buildShell() {
     btn.onclick = () => { navigate(btn.dataset.page, true); closeNav(); };
   });
   window.addEventListener('popstate', () => navigate(pageFromPath(), false));
+  // 中途退出 mock：回 Mock 落地页（紫色 Start 界面）
+  window.addEventListener('mock-abandoned', () => {
+    navigate('mock', true);
+    const btn = $('mock-start-btn');
+    if (btn) btn.style.display = '';
+    const desc = document.querySelector('#view-mock-body > p');
+    if (desc) desc.style.display = '';
+  });
   // mock 进行中给抽屉项加禁用样式（每 500ms 刷新状态）
   setInterval(() => {
     const active = (typeof isMockExamActive === 'function') && isMockExamActive();
