@@ -253,6 +253,7 @@ function pkShowQuestion() {
   const s = pkState; if (!s) return;
   const area = document.getElementById('pk-q-area');
   if (s.myAnswered >= s.qCount) { pkMarkDone(); return; }
+  s.qStartTime = Date.now();
   const item = s.questions[s.myAnswered];
   area.innerHTML = `
     <div style="text-align:center;font-weight:800;color:#78716c;font-size:.85rem;margin-bottom:8px;">Question ${s.myAnswered + 1} / ${s.qCount}</div>
@@ -269,7 +270,11 @@ async function pkAnswer(letter, btn) {
   const s = pkState; if (!s || s.myDone) return;
   const item = s.questions[s.myAnswered];
   const correct = letter === item.a;
-  if (correct) s.myScore++;
+  // 时间积分：10秒答对=1000分，20秒=500分（1500-50/秒），答错=0分，保底100分
+  if (correct) {
+    const sec = (Date.now() - (s.qStartTime || Date.now())) / 1000;
+    s.myScore += Math.max(100, Math.round(1500 - 50 * sec));
+  }
   s.myAnswered++;
   // 高亮
   btn.style.borderColor = correct ? '#10b981' : '#ef4444';
@@ -326,7 +331,7 @@ async function pkFinish(room) {
   result.innerHTML = `
     <div style="font-size:3.2rem;margin-bottom:6px;">${win ? '🏆' : tie ? '🤝' : '💪'}</div>
     <h2 style="margin:0 0 4px;font-size:1.5rem;color:#1e293b;">${win ? 'Victory!' : tie ? 'Draw' : 'Defeat'}</h2>
-    <p style="font-size:1.1rem;font-weight:800;color:#78716c;margin:0 0 16px;">You ${myScore} — ${oppScore} Opponent</p>
+    <p style="font-size:1.1rem;font-weight:800;color:#78716c;margin:0 0 16px;">You ${myScore} pts — ${oppScore} pts Opponent</p>
     <button id="pk-again-btn" style="padding:12px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Back to Lobby</button>`;
   document.getElementById('pk-again-btn').onclick = () => {
     result.style.display = 'none';
