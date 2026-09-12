@@ -31,7 +31,7 @@ let currentPage = 'home';
 let infoPanelHome = null; // #info-panel 的原始父容器
 
 // === URL 路由（真分页：/leaderboard 等）===
-const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', leaderboard: '/leaderboard', ai: '/ai-analysis', pk: '/pk' };
+const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', 'mistakes/paper': '/mistakes/paper', leaderboard: '/leaderboard', ai: '/ai-analysis', pk: '/pk' };
 // 站点根：剥掉 index.html 与任何已知路由后缀（/mock-exam/leaderboard 这类嵌套也剥干净）
 let BASE = location.pathname.replace(/\/index\.html?$/, '');
 let _again = true;
@@ -106,6 +106,11 @@ function buildShell() {
     btn.addEventListener('click', handler);
   });
 
+  // 错题组卷：进入/退出 paper 子路由
+  window.addEventListener('paper-started', () => navigate('mistakes/paper', true));
+  window.addEventListener('paper-finished', () => { navigate('mistakes', true); renderMistakesView(); });
+  window.addEventListener('paper-abandoned', () => { navigate('mistakes', true); renderMistakesView(); });
+
   // 中途退出 mock：回 Mock 落地页（紫色 Start 界面）
   window.addEventListener('mock-abandoned', () => {
     // 先把题目面板移回主页并整体隐藏，避免 "Select chapters to start" 落在落地页下方
@@ -124,7 +129,7 @@ function buildShell() {
   setInterval(() => {
     const active = (typeof isMockExamActive === 'function') && isMockExamActive();
     drawer.querySelectorAll('.drawer-item').forEach(btn => {
-      const lock = active && btn.dataset.page !== 'home';
+      const lock = active && btn.dataset.page !== 'home' && btn.dataset.page !== 'mock';
       btn.style.opacity = lock ? '.4' : '';
       btn.style.pointerEvents = lock ? 'none' : '';
     });
@@ -208,7 +213,7 @@ body { padding-top:56px; }`;
 function navigate(page, push) {
   // Mock exam in progress: lock navigation — only Home allowed (auto-settles)
   const mockActive = (typeof isMockExamActive === 'function') && isMockExamActive();
-  if (mockActive && page !== 'home') {
+  if (mockActive && page !== 'home' && page !== 'mock') {
     // 轻提示 + 拒绝跳转
     const note = document.getElementById('nav-lock-note');
     if (note) {
@@ -244,7 +249,7 @@ function navigate(page, push) {
     }
   } else {
     if (!infoPanelHome) infoPanelHome = $('info-panel').parentElement;
-    if (page === 'mistakes') renderMistakesView();
+    if (page === 'mistakes' || page === 'mistakes/paper') renderMistakesView();
     if (page === 'leaderboard') renderLeaderboardView();
     if (page === 'ai') renderAiView();
     if (page === 'pk' && typeof renderPKView === 'function') renderPKView();
@@ -307,7 +312,15 @@ function renderMistakesView() {
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <span style="font-weight:800;color:#334155;font-size:.95rem;">${items.length} question(s) · ${records.length} wrong attempt(s)</span>
-      <button id="mistakes-clear-btn" class="topbar-btn" style="background:#fff;border:1.5px solid rgba(220,53,69,.25);color:#dc3545;">${ICONS.trash} Clear All</button>
+    </div>
+    <button id="mistakes-generate-btn" class="view-action-btn" style="margin-bottom:16px;">
+      ${ICONS.sparkles}<span>Generate a Paper from Mistakes</span></button>
+    <div id="mistakes-gen-setup" style="display:none;margin-bottom:16px;background:#fff;border:1px solid #ece4d4;border-radius:14px;padding:14px;">
+      <p style="font-size:.8rem;color:#78716c;margin:0 0 8px;font-weight:700;">Number of questions (weighted by wrong count)</p>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="mistakes-paper-count" type="number" min="5" max="50" value="10" style="width:80px;padding:8px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;font-weight:700;text-align:center;">
+        <button id="mistakes-paper-go" style="flex:1;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Start Paper</button>
+      </div>
     </div>
     ${items.map(r => `
       <div class="mistake-item">
@@ -324,12 +337,32 @@ function renderMistakesView() {
           : `<div style="color:#1e293b;font-weight:600;">${escapeHtml(String(r.question || ''))}</div>`}
         </div>
       </div>`).join('')}`;
-  $('mistakes-clear-btn').onclick = () => {
-    if (confirm('Clear ALL wrong-question records?')) {
-      if (typeof clearAllWrongBook === 'function') clearAllWrongBook();
-      renderMistakesView();
+  // Generate Paper 流程
+  const genBtn = $('mistakes-generate-btn');
+  const setupBox = $('mistakes-gen-setup');
+  genBtn.onclick = () => { setupBox.style.display = setupBox.style.display === 'none' ? 'block' : 'none'; };
+  $('mistakes-paper-go').onclick = () => mistakesStartPaper(items);
+}
+
+// === 错题组卷：错误次数越多越可能被抽中 ===
+function mistakesStartPaper(items) {
+  if (!items || !items.length) return;
+  const count = Math.max(5, Math.min(50, parseInt($('mistakes-paper-count').value) || 10));
+  // 加权抽样（不放回）：weight = 错误次数
+  const pool = items.map(it => ({ q: it.question, a: it.answer || '?', img: it.img !== false, chapter: (it.question || '').split('/')[0], w: Math.max(1, it.count || 1) }));
+  const picked = [];
+  const remaining = pool.slice();
+  while (picked.length < count && remaining.length > 0) {
+    const totalW = remaining.reduce((s, q) => s + q.w, 0);
+    let r = Math.random() * totalW;
+    for (let i = 0; i < remaining.length; i++) {
+      r -= remaining[i].w;
+      if (r <= 0) { picked.push(remaining[i]); remaining.splice(i, 1); break; }
     }
-  };
+  }
+  if (picked.length < 5) { alert('Not enough wrong questions (need at least 5).'); return; }
+  // 启动做题（与主页 quiz 相同引擎，paper 标记在 index.html 全局）
+  if (typeof startPaperQuiz === 'function') startPaperQuiz(picked);
 }
 
 // === Leaderboard 页 ===
@@ -416,6 +449,8 @@ function shellInit() {
     for (const [page, route] of Object.entries(ROUTES)) if (qp === route) target = page;
     try { history.replaceState(null, '', (BASE + ROUTES[target]) || '/'); } catch (e) {}
   }
+  // 刷新前在 mock 考试中：直接落回 /mock-exam（bootQuiz 已恢复考试状态）
+  if (typeof isMockExamActive === 'function' && isMockExamActive()) target = 'mock';
   navigate(target, false);
   // 键盘快捷键：Esc 关抽屉
   document.addEventListener('keydown', e => {

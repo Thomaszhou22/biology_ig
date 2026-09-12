@@ -41,10 +41,60 @@ function pkMyName() {
 
 // ============ 状态 ============
 let pkState = null;
+
+// PK 会话持久化：刷新后重连房间
+const PK_STATE_KEY = 'ig-pk-session';
+function pkSaveSession() {
+  if (!pkState) { try { localStorage.removeItem(PK_STATE_KEY); } catch (e) {} return; }
+  const s = pkState;
+  try {
+    localStorage.setItem(PK_STATE_KEY, JSON.stringify({
+      role: s.role, code: s.code, questions: s.questions, qCount: s.qCount,
+      myScore: s.myScore, oppScore: s.oppScore, myAnswered: s.myAnswered,
+      oppAnswered: s.oppAnswered, status: s.status, myDone: s.myDone, oppDone: s.oppDone
+    }));
+  } catch (e) {}
+}
+function pkLoadSession() {
+  try { return JSON.parse(localStorage.getItem(PK_STATE_KEY) || 'null'); } catch { return null; }
+}
+function pkClearSession() { try { localStorage.removeItem(PK_STATE_KEY); } catch (e) {} }
 // { role: 'host'|'guest', code, questions, qCount, chapters, myScore, oppScore,
 //   myAnswered, oppAnswered, status, pollTimer, myDone, oppDone }
 
 function pkEscape(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// 刷新恢复：查房间，活着就回到对战界面
+async function pkTryResume() {
+  const saved = pkLoadSession();
+  if (!saved || !saved.code || saved.status === 'finished') return;
+  try {
+    const rows = await pkApi(`/rest/v1/${PK_TABLE}?code=***}&select=*`);
+    if (!rows || !rows.length) { pkClearSession(); return; }  // 房间已结算删除
+    const room = rows[0];
+    // 恢复本地状态
+    pkState = Object.assign({}, saved, { pollTimer: null });
+    // 回到对应界面
+    document.getElementById('pk-lobby').style.display = 'none';
+    if (pkState.status === 'waiting') {
+      document.getElementById('pk-waiting').style.display = 'block';
+      document.getElementById('pk-wait-code').textContent = pkState.code;
+      pkPoll();
+    } else {
+      // playing / done：恢复对战界面（无倒计时）
+      document.getElementById('pk-game').style.display = 'block';
+      pkUpdateScoreboard();
+      if (pkState.myDone) {
+        document.getElementById('pk-q-area').innerHTML = '<p style="text-align:center;color:#a8a29e;font-weight:700;padding:20px 0;">Waiting for opponent…</p>';
+      } else if (pkState.myAnswered >= pkState.qCount) {
+        pkMarkDone();
+      } else {
+        pkShowQuestion();
+      }
+      pkPoll();
+    }
+  } catch (e) {}
+}
 
 // ============ 房间码 ============
 function pkGenCode() {
@@ -107,6 +157,9 @@ function renderPKView() {
     if (joinInput.value !== v) joinInput.value = v;
   });
 
+  // 刷新恢复：若会话存档存在，验证房间还活着后直接重连
+  pkTryResume();
+
   document.getElementById('pk-create-btn').onclick = pkShowSetup;
   document.getElementById('pk-join-btn').onclick = pkJoinRoom;
   document.getElementById('pk-history-btn').onclick = pkShowHistory;
@@ -162,6 +215,7 @@ async function pkCreateRoom() {
   document.getElementById('pk-setup').style.display = 'none';
   document.getElementById('pk-waiting').style.display = 'block';
   document.getElementById('pk-wait-code').textContent = code;
+  pkSaveSession();
   pkPoll();
 }
 
@@ -243,6 +297,7 @@ async function pkStartGame(room) {
   document.getElementById('pk-game').style.display = 'block';
   pkUpdateScoreboard();
   s.myScore = 0; s.myAnswered = 0; s.status = 'playing';
+  pkSaveSession();
   pkShowQuestion();
   pkPoll();
 }
@@ -298,6 +353,7 @@ async function pkAnswer(letter, btn) {
   // 错题入本会话缓冲（跑完提交，退出丢弃——与单刷规则一致）
   if (!correct && typeof pendingWrongRecords !== 'undefined') pendingWrongRecords.push({ qItem: { q: item.q, img: true, a: item.a }, qNumber: s.myAnswered });
 
+  pkSaveSession();
   pkUpdateScoreboard();
   setTimeout(() => pkShowQuestion(), 450);
 }
@@ -314,6 +370,7 @@ async function pkMarkDone() {
     await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'PATCH', body: JSON.stringify({ status: oppDoneAlready ? 'finished' : st }) });
     if (oppDoneAlready) await pkFinish(null);
   } catch (e) {}
+  pkSaveSession();
   document.getElementById('pk-q-area').innerHTML = '<p style="text-align:center;color:#a8a29e;font-weight:700;padding:20px 0;">Waiting for opponent…</p>';
 }
 
@@ -327,6 +384,7 @@ async function pkFinish(room) {
   // 提交会话缓冲（错题入库）
   if (typeof commitSessionRecords === 'function') commitSessionRecords();
   const myScore = s.myScore, oppScore = s.oppScore;
+  pkClearSession(); // 对局结束，清会话存档
   const win = myScore > oppScore, tie = myScore === oppScore;
   // 历史记录
   addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: win ? 'win' : tie ? 'tie' : 'loss' });
@@ -352,6 +410,7 @@ async function pkFinish(room) {
 function pkLeaveRoom() {
   if (pkState && pkState.pollTimer) clearTimeout(pkState.pollTimer);
   pkState = null;
+  pkClearSession();
   renderPKView();
 }
 

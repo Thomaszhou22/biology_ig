@@ -471,6 +471,14 @@ const QUESTION_CHAPTERS = [
 
 // === State ===
 let deepQuestions = [];
+// Mock exam state — declared at top so bootQuiz (runs immediately) can't hit TDZ
+let mockTimerInterval = null;
+let mockTimeRemaining = 0;
+let isMockExam = false;
+let timerHidden = false;
+let mockAnswers = {}; // { questionIndex: {letter, correct} }
+let mockFlags = {};  // { questionIndex: true }
+let isPaperMode = false; // 错题组卷模式（复用普通 quiz 引擎）
 let selectedQuestionCount = 0;
 let activeChapters = [];
 let currentQuestionItem = null;
@@ -485,7 +493,13 @@ function saveProgress() {
     try {
         const itemIdx = deepQuestions.indexOf(currentQuestionItem);
         localStorage.setItem(PROGRESS_KEY, JSON.stringify({
-            deepQuestions, questionIndex, totalCorrect, totalWrong, currentQuestionItemIndex: itemIdx >= 0 ? itemIdx : 0
+            deepQuestions, questionIndex, totalCorrect, totalWrong, currentQuestionItemIndex: itemIdx >= 0 ? itemIdx : 0,
+            mock: (typeof isMockExam !== 'undefined' && isMockExam),
+            paper: (typeof isPaperMode !== 'undefined') && isPaperMode
+              ? { answers: (typeof mockAnswers !== 'undefined' ? mockAnswers : {}),
+                  flags: (typeof mockFlags !== 'undefined' ? mockFlags : {}),
+                  timeRemaining: (typeof mockTimeRemaining !== 'undefined' ? mockTimeRemaining : 0) }
+              : null
         }));
     } catch(e) {}
 }
@@ -916,9 +930,10 @@ function renderCurrentQuestion() {
     });
 
     // Mock exam mode: show nav, restore previous selection, hide live score
+    // (typeof guard: this runs from bootQuiz before mock vars are declared)
     const mockNav = document.getElementById('mock-nav');
     const scoreEl = document.getElementById('score-display');
-    if (isMockExam) {
+    if ((typeof isMockExam !== 'undefined') && isMockExam) {
         if (mockNav) mockNav.style.display = 'flex';
         if (scoreEl) scoreEl.style.display = 'none';
         const prev = mockAnswers[questionIndex];
@@ -1015,6 +1030,7 @@ function handleAnswer(letter, clickedBtn) {
         mockAnswers[questionIndex] = { letter, correct };
         document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected-answer'));
         clickedBtn.classList.add('selected-answer');
+        saveProgress(); // 刷新恢复用
         updateMockNavState();
         updateMockGrid();
         return;
@@ -1090,12 +1106,40 @@ function hideFinishOverlay() {
     document.getElementById('finish-overlay').setAttribute('aria-hidden', 'true');
 }
 
+// 错题组卷启动：复用主页 quiz 引擎，paper 标记控制 Done/Quit 行为
+function startPaperQuiz(questions) {
+  isPaperMode = true;
+  deepQuestions = questions;
+  questionIndex = 0;
+  totalCorrect = 0;
+  totalWrong = 0;
+  currentQuestionItem = deepQuestions[0];
+  isAnswering = true;
+  const panel = document.getElementById('info-panel');
+  if (panel) panel.style.display = '';
+  document.getElementById('progress-bar').style.display = 'block';
+  document.getElementById('score-display').style.display = 'flex';
+  document.getElementById('abort-btn').style.display = 'block';
+  hideFinishOverlay();
+  renderCurrentQuestion();
+  updateScoreDisplay();
+  saveProgress();
+  window.dispatchEvent(new CustomEvent('paper-started'));
+}
+
 document.getElementById('finish-restart-btn').onclick = () => {
     clearProgress();
     document.getElementById('abort-btn').style.display = 'none';
     hideFinishOverlay();
     // mock 结算：面板已隐藏，跳过主界面重置（由 mock-finished 事件处理路由）
     if (window.__mockFinishPending) { window.__mockFinishPending = false; return; }
+    // 错题组卷完成：回错题本页（错题已由 commitSessionRecords 提交）
+    if (isPaperMode) {
+      isPaperMode = false;
+      document.getElementById('info-panel').style.display = 'none';
+      window.dispatchEvent(new CustomEvent('paper-finished'));
+      return;
+    }
     // 重置回初始界面（Select chapters to start）
     deepQuestions = []; currentQuestionItem = null; questionIndex = 0; totalCorrect = 0; totalWrong = 0;
     document.getElementById('progress-bar').style.display = 'none';
@@ -1203,6 +1247,10 @@ document.getElementById('wrong-book-overlay').addEventListener('click', closeWro
     if (saved && saved.deepQuestions && saved.deepQuestions.length > 0) {
         document.getElementById('info-panel').style.display = '';
         deepQuestions = saved.deepQuestions;
+        // mock 状态暂存，脚本末尾恢复（此时 let 声明已就绪，避免 TDZ）
+        if (saved.mock && saved.mock.answers) {
+            window.__pendingMockRestore = saved.mock;
+        }
         questionIndex = saved.questionIndex || 0;
         totalCorrect = saved.totalCorrect || 0;
         totalWrong = saved.totalWrong || 0;
@@ -1595,12 +1643,7 @@ persistAI = function() {
 // === Mock Exam Feature ===
 const MOCK_EXAM_DURATION = 45 * 60; // 45 minutes in seconds
 const MOCK_EXAM_COUNT = 40;
-let mockTimerInterval = null;
-let mockTimeRemaining = 0;
-let isMockExam = false;
-let timerHidden = false;
-let mockAnswers = {}; // { questionIndex: {letter, correct} }
-let mockFlags = {};  // { questionIndex: true }
+// (mock state declarations moved to script top to avoid TDZ with bootQuiz)
 // 会话缓冲：中途退出 = 不计数（错题不入库、云端不上报），完成时才提交
 let pendingWrongRecords = [];
 let pendingCloudAnswers = [];
@@ -1747,8 +1790,10 @@ const origAbortQuiz = abortQuiz;
 abortQuiz = function() {
   if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
   const wasMock = isMockExam;
+  const wasPaper = isPaperMode;
   discardSessionRecords(); // 中途退出：已做题不计数、错题不入库
   isMockExam = false;
+  isPaperMode = false;
   document.getElementById('mock-timer-container').style.display = 'none';
   const mockNav = document.getElementById('mock-nav');
   if (mockNav) mockNav.style.display = 'none';
@@ -1760,6 +1805,10 @@ abortQuiz = function() {
     document.getElementById('score-display').style.display = 'none';
     // 中途退出：回 Mock 落地页（紫色 Start 按钮界面），而不是章节选择首页
     window.dispatchEvent(new CustomEvent('mock-abandoned'));
+  }
+  if (wasPaper) {
+    document.getElementById('info-panel').style.display = 'none';
+    window.dispatchEvent(new CustomEvent('paper-abandoned'));
   }
 };
 
@@ -1776,24 +1825,62 @@ showFinishOverlay = function() {
 
 const _mockBtn = document.getElementById('mock-exam-btn'); if (_mockBtn) _mockBtn.onclick = startMockExam;
 const _mpBtn = document.getElementById('mock-prev-btn');
-if (_mpBtn) _mpBtn.onclick = () => { if (isMockExam && questionIndex > 0) { questionIndex--; currentQuestionItem = deepQuestions[questionIndex]; isAnswering = true; renderCurrentQuestion(); } };
+if (_mpBtn) _mpBtn.onclick = () => { if (isMockExam && questionIndex > 0) { questionIndex--; currentQuestionItem = deepQuestions[questionIndex]; isAnswering = true; renderCurrentQuestion(); saveProgress(); } };
 const _mfBtn = document.getElementById('mock-flag-btn');
 if (_mfBtn) _mfBtn.onclick = () => {
   if (!isMockExam) return;
   if (mockFlags[questionIndex]) delete mockFlags[questionIndex]; else mockFlags[questionIndex] = true;
   _mfBtn.classList.toggle('flagged', !!mockFlags[questionIndex]);
+  saveProgress(); // 刷新恢复用
   updateMockGrid();
 };
 const _mnBtn = document.getElementById('mock-next-btn');
 if (_mnBtn) _mnBtn.onclick = () => {
   if (!isMockExam) return;
   if (questionIndex >= deepQuestions.length - 1) { settleMockExam(); return; }
-  questionIndex++; currentQuestionItem = deepQuestions[questionIndex]; isAnswering = true; renderCurrentQuestion();
+  questionIndex++; currentQuestionItem = deepQuestions[questionIndex]; isAnswering = true; renderCurrentQuestion(); saveProgress();
 };
 // Re-bind abort button AFTER the override above so Quit clears the mock timer
 document.getElementById('abort-btn').onclick = abortQuiz;
 // Expose mock state for the app shell
 function isMockExamActive() { return !!isMockExam; }
+
+// 刷新恢复 mock 考试（在全部声明之后执行，无 TDZ）
+(function restoreMockState() {
+    const m = window.__pendingMockRestore;
+    if (!m || !m.answers) return;
+    window.__pendingMockRestore = null;
+    isMockExam = true;
+    mockAnswers = m.answers || {};
+    mockFlags = m.flags || {};
+    mockTimeRemaining = m.timeRemaining || MOCK_EXAM_DURATION;
+    document.getElementById('mock-timer-container').style.display = 'block';
+    document.getElementById('mock-timer-text').textContent = formatTime(mockTimeRemaining);
+    const rsBtn0 = document.getElementById('reselect-chapters-btn');
+    if (rsBtn0) rsBtn0.style.display = 'none';
+    buildMockGrid();
+    document.getElementById('mock-grid').style.display = 'block';
+    if (mockTimerInterval) clearInterval(mockTimerInterval);
+    mockTimerInterval = setInterval(() => {
+        mockTimeRemaining--;
+        if (mockTimeRemaining <= 0) {
+            mockTimeRemaining = 0;
+            clearInterval(mockTimerInterval); mockTimerInterval = null;
+            showMsg('⏰ Time\'s up!', 'incorrect');
+            setTimeout(() => { hideMsg(); settleMockExam(); }, 1200);
+        }
+        const elapsed = MOCK_EXAM_DURATION - mockTimeRemaining;
+        const pct = Math.round((elapsed / MOCK_EXAM_DURATION) * 100);
+        document.getElementById('mock-timer-fill').style.width = pct + '%';
+        document.getElementById('mock-timer-text').textContent = formatTime(mockTimeRemaining);
+        const timerText = document.getElementById('mock-timer-text');
+        const timerFill = document.getElementById('mock-timer-fill');
+        if (mockTimeRemaining <= 300) { timerText.style.color = '#dc2626'; timerFill.style.background = 'linear-gradient(90deg,#dc2626,#f87171,#dc2626)'; }
+        else if (mockTimeRemaining <= 600) { timerText.style.color = '#d97706'; timerFill.style.background = 'linear-gradient(90deg,#d97706,#fbbf24,#d97706)'; }
+    }, 1000);
+    // 重渲染当前题以应用考试模式 UI（静默选项、mock 导航、隐藏分数条）
+    if (currentQuestionItem) { isAnswering = true; renderCurrentQuestion(); }
+})();
 document.getElementById('mock-timer-hide').onclick = toggleMockTimer;
 
 </script>

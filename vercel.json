@@ -19,6 +19,10 @@
     {
       "source": "/pk",
       "destination": "/index.html"
+    },
+    {
+      "source": "/mistakes/paper",
+      "destination": "/index.html"
     }
   ]
 }
