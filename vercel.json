@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/leaderboard", "destination": "/index.html" },
+    { "source": "/mistakes", "destination": "/index.html" },
+    { "source": "/mock-exam", "destination": "/index.html" },
+    { "source": "/ai-analysis", "destination": "/index.html" }
+  ]
+}

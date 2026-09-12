@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>IG Biology Quiz</title>
+<script>
+// GitHub Pages SPA fallback: deep links like /biology_ig/leaderboard land here.
+// Redirect to the app root with ?page= so app.js can restore the route.
+(function () {
+  var l = location;
+  // l.pathname = /biology_ig/leaderboard（或 404.html 所在路径）
+  var root = l.pathname.replace(/\/[^/]*$/, '/'); // 去掉最后一段 = app 根
+  var route = l.pathname.slice(root.length - 1);   // /leaderboard
+  l.replace(root + '?page=' + encodeURIComponent(route));
+})();
+</script>
+</head>
+<body></body>
+</html>

@@ -27,6 +27,17 @@ const PAGES = [
 let currentPage = 'home';
 let infoPanelHome = null; // #info-panel 的原始父容器
 
+// === URL 路由（真分页：/leaderboard 等）===
+const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', leaderboard: '/leaderboard', ai: '/ai-analysis' };
+const BASE = location.pathname.replace(/\/index\.html?$/, '').replace(/\/$/, '');
+function pageFromPath() {
+  const p = location.pathname.slice(BASE.length) || '/';
+  for (const [page, route] of Object.entries(ROUTES)) {
+    if (route && (p === route || p === route + '/')) return page;
+  }
+  return 'home';
+}
+
 function $(id) { return document.getElementById(id); }
 
 function buildShell() {
@@ -62,8 +73,9 @@ function buildShell() {
   $('nav-close').onclick = closeNav;
   scrim.onclick = closeNav;
   drawer.querySelectorAll('.drawer-item').forEach(btn => {
-    btn.onclick = () => { navigate(btn.dataset.page); closeNav(); };
+    btn.onclick = () => { navigate(btn.dataset.page, true); closeNav(); };
   });
+  window.addEventListener('popstate', () => navigate(pageFromPath(), false));
 
   // 页面视图（覆盖层）
   const mk = (id, cls) => {
@@ -132,8 +144,11 @@ body { padding-top:56px; }`;
 }
 
 // === 页面导航 ===
-function navigate(page) {
+function navigate(page, push) {
   currentPage = page;
+  if (push !== false && window.history && history.pushState) {
+    try { history.pushState(null, '', (BASE + (ROUTES[page] || '')) || '/'); } catch (e) {}
+  }
   // 高亮抽屉
   document.querySelectorAll('.drawer-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   // 显示对应视图
@@ -291,7 +306,15 @@ function renderAiView() {
 // === 启动 ===
 function shellInit() {
   buildShell();
-  navigate('home');
+  // 按 URL 初始页进入（支持直接访问 /leaderboard 等）
+  let target = pageFromPath();
+  // GH Pages 404 回退：?page=/leaderboard
+  const qp = new URLSearchParams(location.search).get('page');
+  if (qp) {
+    for (const [page, route] of Object.entries(ROUTES)) if (qp === route) target = page;
+    try { history.replaceState(null, '', (BASE + ROUTES[target]) || '/'); } catch (e) {}
+  }
+  navigate(target, false);
   // 键盘快捷键：Esc 关抽屉
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
