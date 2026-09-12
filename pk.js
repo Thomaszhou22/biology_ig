@@ -30,6 +30,9 @@ async function pkApi(path, opts) {
 }
 
 function pkMyId() {
+  // 登录账号优先：同一账号在任何设备上是同一个 id（用于拦截自己和自己 PK）
+  const u = (typeof igCurrentUser === 'function') && igCurrentUser();
+  if (u && u.studentId) return 'sid_' + u.studentId;
   let id = localStorage.getItem('ig-pk-id');
   if (!id) { id = 'u' + Math.random().toString(36).slice(2, 10); localStorage.setItem('ig-pk-id', id); }
   return id;
@@ -136,7 +139,8 @@ function renderPKView() {
     <div id="pk-lobby">
       <div style="display:flex;gap:10px;margin-bottom:14px;">
         <button id="pk-create-btn" style="flex:1;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Create Room</button>
-        <input id="pk-join-input" placeholder="CODE" maxlength="4" style="width:90px;text-align:center;text-transform:uppercase;font-family:inherit;font-weight:800;font-size:16px;letter-spacing:3px;padding:12px;border:2px solid rgba(180,130,70,.15);border-radius:12px;">
+        <input id="pk-join-input" placeholder="CODE" maxlength="4" autocomplete="off" autocapitalize="characters" style="width:90px;text-align:center;text-transform:uppercase;font-family:inherit;font-weight:800;font-size:16px;letter-spacing:3px;padding:12px;border:2px solid rgba(180,130,70,.15);border-radius:12px;">
+        <div id="pk-join-note" style="width:100%;font-size:.72rem;color:#d97706;font-weight:700;text-align:center;opacity:0;transition:opacity .3s;margin-top:4px;"></div>
         <button id="pk-join-btn" style="padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Join</button>
       </div>
       <button id="pk-history-btn" style="width:100%;padding:10px;border:2px solid rgba(180,130,70,.12);border-radius:12px;background:none;color:#c4943a;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">🏆 PK History</button>
@@ -171,9 +175,25 @@ function renderPKView() {
     <div id="pk-result" style="display:none;text-align:center;padding:24px 0;"></div>
   `;
 
-  // 房间码输入过滤：仅大写字母与数字，小写自动转大写
+  // 房间码输入过滤：仅大写字母与数字，小写自动转大写；中文输入法直接拦截
   const joinInput = document.getElementById('pk-join-input');
   joinInput.addEventListener('input', () => {
+    const v = joinInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (joinInput.value !== v) joinInput.value = v;
+  });
+  // keydown 层拦截：非英文/数字按键（含中文输入法组合键）直接吃掉
+  joinInput.addEventListener('keydown', (e) => {
+    // 放行控制键（退格、方向、全选复制粘贴等）
+    if (e.key.length > 1 || e.metaKey || e.ctrlKey) return;
+    // 只放行 a-z 0-9（英文输入法）；其他可见字符（含中文/全角/符号）拦截
+    if (!/[a-zA-Z0-9]/.test(e.key)) e.preventDefault();
+  });
+  // compositionstart 时切英文提示（中文输入法开始组合即拦）
+  joinInput.addEventListener('compositionstart', () => {
+    const note = document.getElementById('pk-join-note');
+    if (note) { note.textContent = 'Please use the English keyboard for room codes (A-Z, 0-9)'; note.style.opacity = '1'; }
+  });
+  joinInput.addEventListener('compositionend', () => {
     const v = joinInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (joinInput.value !== v) joinInput.value = v;
   });
@@ -249,7 +269,7 @@ async function pkJoinRoom() {
     if (!rows || !rows.length) { alert('Room not found.'); return; }
     const room = rows[0];
     if (room.status !== 'waiting') { alert('Room already started or finished.'); return; }
-    if (room.host_id === pkMyId()) { alert('You are the host of this room.'); return; }
+    if (room.host_id === pkMyId()) { alert('You cannot join your own room (same account).'); return; }
     await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${code}`, { method: 'PATCH', body: JSON.stringify({
       guest_id: pkMyId(), status: 'countdown', start_at: new Date().toISOString()
     })});
