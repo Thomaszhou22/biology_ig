@@ -683,7 +683,10 @@ async function renderAccountPage() {
   if (!me) { box.innerHTML = ''; return; }
 
   box.innerHTML = `
-    <h3 style="margin:0 0 14px;font-size:1.05rem;font-weight:800;color:#1e293b;">👤 Account</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 14px;">
+      <h3 style="margin:0;font-size:1.05rem;font-weight:800;color:#1e293b;">👤 Account</h3>
+      <button id="acc-logout-btn" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid rgba(180,130,70,.2);border-radius:10px;background:#fff;color:#c4943a;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;">Log out</button>
+    </div>
     <div style="background:#fff;border:1px solid #ece4d4;border-radius:14px;padding:16px;margin-bottom:14px;">
       <p style="font-size:.8rem;color:#78716c;font-weight:700;margin:0 0 8px;">Student ID</p>
       <p style="font-size:1rem;font-weight:800;color:#1e293b;margin:0 0 16px;">${escapeHtml(me.studentId)}</p>
@@ -708,6 +711,10 @@ async function renderAccountPage() {
       <button id="acc-del-btn" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Delete My Account</button>
       <p id="acc-del-msg" style="font-size:.75rem;font-weight:700;min-height:1.2em;margin:6px 0 0;"></p>
     </div>`;
+
+  // Log out
+  const loBtn = document.getElementById('acc-logout-btn');
+  if (loBtn && typeof logout === 'function') loBtn.onclick = logout;
 
   // Preferred name：加载现有值 + 保存
   const pnameInput = document.getElementById('acc-pname');
