@@ -533,9 +533,17 @@ async function renderLeaderboardView(tab) {
       if (!data.length) { inner.innerHTML = `<p class="page-empty">No PK records yet — challenge someone!</p>`; return; }
       const me = (typeof igCurrentUser === 'function') && igCurrentUser();
       const names = (typeof igPrefetchNames === 'function') ? await igPrefetchNames(data.map(r => r.student_id)) : {};
+      const myRank = me ? data.findIndex(r => r.student_id === me.studentId) + 1 : 0;
       const medalIcon = i => i === 1 ? '🥇' : i === 2 ? '🥈' : i === 3 ? '🥉' : i;
       const medalCls = i => i === 1 ? 'medal-gold' : i === 2 ? 'medal-silver' : i === 3 ? 'medal-bronze' : '';
-      inner.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.95rem;">
+      inner.innerHTML = `
+      ${myRank ? `
+      <div style="background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(99,102,241,.04));border:1.5px solid rgba(99,102,241,.25);border-radius:18px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:1.6rem;font-weight:800;color:#4f46e5;">#${myRank}</div>
+        <div style="flex:1;font-size:.88rem;color:#78716c;font-weight:600;">Your rank among ${data.length} student(s)<br>
+          <span style="color:#334155;">${data[myRank - 1].wins} win(s) · ${data[myRank - 1].wins}/${data[myRank - 1].losses}/${data[myRank - 1].ties} W/L/T</span></div>
+      </div>` : ''}
+      <table style="width:100%;border-collapse:collapse;font-size:.95rem;">
         <thead><tr style="border-bottom:2px solid #ece4d4;color:#a8a29e;font-size:.78rem;">
           <th style="padding:10px 8px;text-align:center;">Rank</th>
           <th style="padding:10px 8px;text-align:left;">Student ID</th>
@@ -546,7 +554,7 @@ async function renderLeaderboardView(tab) {
         ${data.map((row, i) => `
           <tr class="${medalCls(i + 1)}" style="${me && row.student_id === me.studentId && i + 1 > 3 ? 'outline:2px solid rgba(99,102,241,.4);outline-offset:-2px;font-weight:800;' : ''}">
             <td style="padding:12px 8px;text-align:center;font-weight:800;">${medalIcon(i + 1)}</td>
-            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${names[row.student_id] ? escapeHtml(names[row.student_id]) + ' <span style="color:#a8a29e;font-size:.75rem;">(' + escapeHtml(row.student_id) + ')</span>' : escapeHtml(row.student_id)}</td>
+            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${names[row.student_id] ? escapeHtml(names[row.student_id]) : escapeHtml(row.student_id)}</td>
             <td style="padding:12px 8px;text-align:right;font-weight:800;color:#6366f1;">${row.wins}</td>
             <td style="padding:12px 8px;text-align:right;color:#a8a29e;font-weight:600;">${row.wins}/${row.losses}/${row.ties}</td>
           </tr>`).join('')}
@@ -594,7 +602,7 @@ async function renderLeaderboardView(tab) {
         ${data.map((row, i) => `
           <tr class="${medal(i + 1)}" style="border-radius:12px;${me && row.student_id === me.studentId && i + 1 > 3 ? 'outline:2px solid rgba(245,158,11,.5);outline-offset:-2px;font-weight:800;' : ''}">
             <td style="padding:12px 8px;text-align:center;font-weight:800;">${medalIcon(i + 1)}</td>
-            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${names[row.student_id] ? escapeHtml(names[row.student_id]) + ' <span style="color:#a8a29e;font-size:.75rem;">(' + escapeHtml(row.student_id) + ')</span>' : escapeHtml(row.student_id)}</td>
+            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${names[row.student_id] ? escapeHtml(names[row.student_id]) : escapeHtml(row.student_id)}</td>
             <td style="padding:12px 8px;text-align:right;font-weight:700;">${row.unique_questions}</td>
             <td style="padding:12px 8px;text-align:right;font-weight:700;color:${row.accuracy >= 80 ? '#10b981' : row.accuracy >= 60 ? '#f59e0b' : '#ef4444'};">${row.accuracy}%</td>
           </tr>`).join('')}
