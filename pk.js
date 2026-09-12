@@ -259,6 +259,27 @@ async function pkJoinRoom() {
   } catch (e) { alert('Join failed: ' + e.message); }
 }
 
+// 对手逃跑：房间作废，通知本方
+function pkOnOpponentFled() {
+  if (!pkState || pkState.status === 'finished') return;
+  pkClearSession();
+  if (pkState.pollTimer) clearTimeout(pkState.pollTimer);
+  pkState = null;
+  const game = document.getElementById('pk-game');
+  if (game) game.style.display = 'none';
+  const result = document.getElementById('pk-result');
+  result.style.display = 'block';
+  result.innerHTML = `
+    <div style="font-size:3rem;margin-bottom:6px;">🚪</div>
+    <h2 style="margin:0 0 4px;font-size:1.4rem;color:#1e293b;">Opponent Left</h2>
+    <p style="font-size:.95rem;font-weight:700;color:#78716c;margin:0 0 16px;">Your opponent disconnected — this duel is void.</p>
+    <button id="pk-fled-back-btn" style="padding:12px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Back to Lobby</button>`;
+  document.getElementById('pk-fled-back-btn').onclick = () => {
+    result.style.display = 'none';
+    document.getElementById('pk-lobby').style.display = 'block';
+  };
+}
+
 // ============ 轮询 ============
 function pkPoll() {
   if (pkState && pkState.pollTimer) clearTimeout(pkState.pollTimer);
@@ -268,6 +289,15 @@ function pkPoll() {
     try {
       const rows = await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${pkState.code}&select=*`);
       if (rows && rows.length) await pkOnRoom(rows[0]);
+      else if (pkState && pkState.status !== 'finished' && !pkState.myDone) {
+        // 房间消失且自己没完成 = 对方逃跑/房间被删 —— 收到通知
+        pkOnOpponentFled();
+      }
+      // 心跳：告诉对方我还在线
+      if (pkState && pkState.status !== 'finished') {
+        const hb = pkState.role === 'host' ? { host_seen: new Date().toISOString() } : { guest_seen: new Date().toISOString() };
+        pkApi(`/rest/v1/${PK_TABLE}?code=eq.${pkState.code}`, { method: 'PATCH', body: JSON.stringify(hb) }).catch(() => {});
+      }
     } catch (e) {}
     if (pkState && pkState.status !== 'finished') pkPoll();
   }, 1500);
@@ -281,6 +311,16 @@ async function pkOnRoom(room) {
     s.status = 'countdown';
     document.getElementById('pk-waiting').style.display = 'none';
     pkStartGame(room);
+    return;
+  }
+
+  // 逃跑检测：对手心跳超过 10 秒没更新 = 逃跑（对局中都适用）
+  const oppSeenField = s.role === 'host' ? 'guest_seen' : 'host_seen';
+  const oppSeen = room[oppSeenField] ? Date.parse(room[oppSeenField]) : Date.parse(room.created_at || '');
+  if (Date.now() - oppSeen > 10000 && room.status !== 'finished') {
+    // 对手跑了：清理房间并收通知（不记胜负）
+    try { await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'DELETE' }); } catch (e) {}
+    pkOnOpponentFled();
     return;
   }
 
@@ -426,8 +466,8 @@ async function pkFinish(room) {
       student_id: meU.studentId, code: s.code, my_score: myScore, opp_score: oppScore, result: myResult
     })}).catch(() => {});
   }
-  // 清理房间（双方都看到结果后延迟删；此处由先到者删）
-  try { await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'DELETE' }); } catch (e) {}
+  // 房间保留 60 秒再删：让后完成的一方也能轮询到终局数据拿到结算
+  setTimeout(() => { try { pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'DELETE' }).catch(() => {}); } catch (e) {} }, 60000);
 
   const game = document.getElementById('pk-game');
   if (game) game.style.display = 'none';
