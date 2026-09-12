@@ -84,7 +84,7 @@ body > * { position: relative; z-index: 1; }
 .score-display .wrong-count { color: #dc2626; }
 .score-display .total-count { color: #c4943a; }
 
-#preload-overlay { position: fixed; inset: 0; background: rgba(245,240,232,0.95); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; font-size: 16px; color: #78716c; font-weight: 600; }
+#preload-overlay { position: fixed; inset: 0; background: rgba(245,240,232,0.97); z-index: 8000; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; font-size: 16px; color: #78716c; font-weight: 600; }
 #preload-overlay .preload-bar { width: 320px; max-width: 80vw; height: 12px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
 #preload-overlay .preload-fill { height: 100%; background: linear-gradient(90deg, #c4943a, #b8860b); border-radius: 10px; transition: width 0.15s; width: 0%; }
 #preload-overlay .preload-text { font-size: 14px; color: #a8a29e; }
@@ -1014,6 +1014,16 @@ function settleMockExam() {
     document.getElementById('abort-btn').style.display = 'none';
     document.getElementById('score-display').style.display = 'none';
     showFinishOverlay();
+    // mock 成绩单补充：已答/未答说明（部分交卷时总分只含已答题）
+    const answeredN = Object.keys(mockAnswers).length;
+    const summary = document.createElement('p');
+    summary.className = 'stat-line';
+    summary.dataset.mockSummary = '1';
+    summary.style.color = '#78716c';
+    summary.style.fontSize = '0.9rem';
+    summary.innerHTML = 'Answered <b>' + answeredN + '</b> / ' + deepQuestions.length +
+      (answeredN < deepQuestions.length ? ' · <span style="color:#d97706;">' + (deepQuestions.length - answeredN) + ' unanswered</span>' : '');
+    document.getElementById('finish-modal').insertBefore(summary, document.getElementById('finish-restart-btn'));
     // 通知壳层：这是 mock 的结算，Done 后回 Mock 落地页
     window.__mockFinishPending = true;
     window.dispatchEvent(new CustomEvent('mock-finished'));
@@ -1091,6 +1101,8 @@ function hideMsg() {
 // === Finish overlay ===
 function showFinishOverlay() {
     commitSessionRecords();
+    // 清理上次 mock 注入的已答/未答行（避免叠加）
+    document.querySelectorAll('#finish-modal [data-mock-summary]').forEach(e => e.remove());
     const total = totalCorrect + totalWrong;
     const acc = total > 0 ? Math.round((totalCorrect / total) * 100) + '%' : '—';
     document.getElementById('finish-total').textContent = total;
