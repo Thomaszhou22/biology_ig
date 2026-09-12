@@ -4,7 +4,7 @@
 // Sign in：学号 + 密码。登录后：答题逐题上报云端、错题本云端合并、排行榜。
 /* global crypto */
 
-const SB_URL = 'https://shbrzimzhoqremvxhzib.supabase.co';
+const SB_URL = 'https://api.igmcq.com'; // Cloudflare Worker 中转，国内直连
 const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoYnJ6aW16aG9xcmVtdnhoemliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjYwOTcsImV4cCI6MjA5NTA0MjA5N30.UBLG-XCvMwn1D7U77AY_6IGJWSKMnc1Ii2qQIJW-NMI';
 const SB_TABLE_USERS = 'ig_users';
 const SB_TABLE_ANSWERS = 'ig_answers';
