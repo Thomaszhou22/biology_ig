@@ -10,6 +10,8 @@ const ICONS = {
   book: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
   trophy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
   sparkles: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>',
+  github: '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1.17-.02-2.12-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12 0 1.53-.01 2.76-.01 3.14 0 .31.2.68.8.56A10.52 10.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>',
+  gear: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>',
   swords: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></svg>',
   quiz: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>',
   logout: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
@@ -19,12 +21,12 @@ const ICONS = {
 };
 
 const PAGES = [
-  { id: 'home', label: 'Quiz', icon: 'quiz' },
-  { id: 'mock', label: 'Mock Exam', icon: 'clock' },
-  { id: 'pk', label: '1v1 PK', icon: 'swords' },
-  { id: 'mistakes', label: 'Mistake Collection', icon: 'book' },
-  { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy' },
-  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' }
+  { id: 'home', label: 'Quiz', icon: 'quiz', i18n: 'nav.quiz' },
+  { id: 'mock', label: 'Mock Exam', i18n: 'nav.mock', icon: 'clock' },
+  { id: 'pk', label: '1v1 PK', i18n: 'nav.pk', icon: 'swords' },
+  { id: 'mistakes', label: 'Mistake Collection', i18n: 'nav.mistakes', icon: 'book' },
+  { id: 'leaderboard', label: 'Leaderboard', i18n: 'nav.leaderboard', icon: 'trophy' },
+  { id: 'ai', label: 'AI Analysis', i18n: 'nav.ai', icon: 'sparkles' }
 ];
 
 let currentPage = 'home';
@@ -63,7 +65,11 @@ function buildShell() {
   bar.innerHTML = `
     <button id="nav-toggle" title="Menu" aria-label="Open menu">${ICONS.menu}</button>
     <div class="topbar-title">${ICONS.dna}<span>IG Biology Quiz</span></div>
-    <div id="topbar-auth"></div>`;
+    <div style="display:flex;align-items:center;gap:6px;">
+      <a id="topbar-github" href="https://github.com/Thomaszhou22/biology_jump_ig" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;color:#334155;text-decoration:none;">${ICONS.github}</a>
+      <button id="topbar-settings" title="Settings" aria-label="Settings" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:10px;background:none;color:#334155;cursor:pointer;">${ICONS.gear}</button>
+      <div id="topbar-auth"></div>
+    </div>`;
   document.body.prepend(bar);
 
   // 遮罩 + 抽屉
@@ -77,13 +83,15 @@ function buildShell() {
       <button id="nav-close" aria-label="Close menu">${ICONS.x}</button>
     </div>
     <div class="drawer-list">
-      ${PAGES.map(p => `<button class="drawer-item" data-page="${p.id}">${ICONS[p.icon]}<span>${p.label}</span></button>`).join('')}
+      ${PAGES.map(p => `<button class="drawer-item" data-page="${p.id}">${ICONS[p.icon]}<span${p.i18n ? ` data-i18n="${p.i18n}"` : ''}>${p.label}</span></button>`).join('')}
     </div>
     <div id="nav-lock-note" style="margin:0 16px 8px;padding:8px 12px;border-radius:10px;background:rgba(124,58,237,.08);color:#7c3aed;font-size:.75rem;font-weight:700;text-align:center;opacity:0;transition:opacity .3s;"></div>
     <div class="drawer-foot" id="drawer-user"></div>`;
   document.body.append(scrim, drawer);
 
   $('nav-toggle').onclick = () => { drawer.classList.add('open'); scrim.classList.add('show'); };
+  const settingsBtn = $('topbar-settings');
+  if (settingsBtn && typeof openSettingsModal === 'function') settingsBtn.onclick = openSettingsModal;
   const closeNav = () => { drawer.classList.remove('open'); scrim.classList.remove('show'); };
   $('nav-close').onclick = closeNav;
   scrim.onclick = closeNav;
@@ -163,6 +171,8 @@ function buildShell() {
   if (mockHead) mockHead.style.marginBottom = '14px';
 
   injectStyles();
+  // 壳构建完成后再应用一次 i18n（抽屉项是刚创建的，错过了 settings.js 的首遍翻译）
+  if (typeof igApplyI18n === 'function') igApplyI18n();
 }
 
 function injectStyles() {
@@ -371,11 +381,16 @@ async function renderLeaderboardView() {
   const body = $('view-leaderboard-body');
   body.innerHTML = `<p class="page-empty">Loading…</p>`;
   try {
-    const data = (typeof loadLeaderboardRows === 'function') ? await loadLeaderboardRows() : null;
+    let data = (typeof loadLeaderboardRows === 'function') ? await loadLeaderboardRows() : null;
     if (!data || !data.length) {
       body.innerHTML = `<p class="page-empty">No records yet — go answer some questions!</p>`;
       return;
     }
+    // 排序：正确题数（题数×正确率，隐性计算，不显示该列）优先，其次正确率
+    data = data.slice().sort((a, b) =>
+      (b.correct_count ?? Math.round((b.unique_questions * b.accuracy) / 100)) -
+      (a.correct_count ?? Math.round((a.unique_questions * a.accuracy) / 100)) ||
+      (b.accuracy - a.accuracy));
     const me = (typeof igCurrentUser === 'function') ? igCurrentUser() : null;
     const myRank = me ? data.findIndex(r => r.student_id === me.studentId) + 1 : 0;
     const medal = i => i === 1 ? 'medal-gold' : i === 2 ? 'medal-silver' : i === 3 ? 'medal-bronze' : '';
