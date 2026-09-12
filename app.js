@@ -306,7 +306,7 @@ function renderQuizLanding() {
   if (!landing) {
     landing = document.createElement('div');
     landing.id = 'quiz-landing';
-    landing.className = 'view-page';
+    landing.className = 'view-page show';
     landing.innerHTML = `
       <div class="view-card">
         <div class="view-head" style="margin-bottom:14px;">
