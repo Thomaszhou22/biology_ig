@@ -1,16 +1,15 @@
-// auth.js — IG Biology Quiz 账号系统（Supabase）
-// 设计：localStorage 仍是主数据源（未登录体验完全不变）；登录后逐题上报云端，
-// 登录时拉取云端记录并合并本地错题本，自适应算法读 getWrongBook() 即自动同步。
-/* global crypto, fetch */
+// auth.js — IG Biology Quiz 强制账号门（Supabase）
+// 未登录 = 全屏登录门（Sign in / Sign up，全英文，配色与站点一致）
+// Signup：学号（8 位）+ 密码 + 确认密码，一键注册并进入
+// Sign in：学号 + 密码。登录后：答题逐题上报云端、错题本云端合并、排行榜。
+/* global crypto */
 
-// === Supabase 配置（复用 quiz-system 项目）===
 const SB_URL = 'https://shbrzimzhoqremvxhzib.supabase.co';
 const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoYnJ6aW16aG9xcmVtdnhoemliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjYwOTcsImV4cCI6MjA5NTA0MjA5N30.UBLG-XCvMwn1D7U77AY_6IGJWSKMnc1Ii2qQIJW-NMI';
 const SB_TABLE_USERS = 'ig_users';
 const SB_TABLE_ANSWERS = 'ig_answers';
 
-// === 会话状态（内存 + sessionStorage，关标签即退出）===
-let currentUser = null; // { studentId }
+let currentUser = null;
 try {
   const s = sessionStorage.getItem('ig-auth-user');
   if (s) currentUser = JSON.parse(s);
@@ -26,11 +25,13 @@ async function sbFetch(path, opts) {
     }
   }, opts || {}));
   if (!res.ok) {
-    let msg = res.status + '';
+    let msg = String(res.status);
     try { const j = await res.json(); msg = j.message || j.msg || msg; } catch (e) {}
     throw new Error(msg);
   }
-  return res.status === 204 ? null : res.json();
+  const text = await res.text();
+  if (!text) return null; // 204 or empty body (Prefer: return=minimal)
+  try { return JSON.parse(text); } catch (e) { return null; }
 }
 
 async function sha256Hex(text) {
@@ -38,89 +39,130 @@ async function sha256Hex(text) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// === UI 渲染 ===
-function renderAuthUI() {
-  const box = document.getElementById('auth-box');
-  if (!box) return;
-  if (currentUser) {
-    box.innerHTML = `
-      <span style="font-size:12px;font-weight:700;color:#1e293b;">🆔 ${escapeAuthHtml(currentUser.studentId)}</span>
-      <button id="auth-logout-btn" style="padding:6px 14px;border-radius:10px;border:1.5px solid rgba(180,130,70,0.2);background:#fff;color:#c4943a;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">退出登录</button>
-      <button id="leaderboard-btn" style="padding:6px 14px;border-radius:10px;border:none;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">🏆 排行榜</button>`;
-    document.getElementById('auth-logout-btn').onclick = logout;
-    document.getElementById('leaderboard-btn').onclick = openLeaderboard;
-  } else {
-    box.innerHTML = `
-      <button id="auth-login-btn" style="padding:6px 14px;border-radius:10px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">🆔 学号登录</button>`;
-    document.getElementById('auth-login-btn').onclick = openAuthModal;
-  }
-}
-
 function escapeAuthHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// === 登录/注册弹窗 ===
-function openAuthModal() {
-  let overlay = document.getElementById('auth-modal');
-  if (overlay) { overlay.style.display = 'flex'; return; }
-  overlay = document.createElement('div');
-  overlay.id = 'auth-modal';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(245,240,232,0.9);display:flex;align-items:center;justify-content:center;z-index:4000;padding:20px;';
-  overlay.innerHTML = `
-    <div style="background:#fff;border-radius:24px;padding:28px;width:min(360px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.25);border:1px solid #e0d8c8;font-family:inherit;">
-      <h2 style="margin:0 0 6px;font-size:1.25rem;font-weight:800;color:#1e293b;text-align:center;">🆔 学号登录</h2>
-      <p style="font-size:0.8rem;color:#64748b;text-align:center;margin:0 0 16px;">请用学号注册（8 位数字）<br>登录后刷题记录与错题本云端同步</p>
-      <input id="auth-sid" placeholder="学号（8 位数字）" maxlength="8" inputmode="numeric" style="width:100%;box-sizing:border-box;padding:12px 14px;border:2px solid rgba(180,130,70,0.15);border-radius:12px;font-size:16px;font-family:inherit;text-align:center;letter-spacing:2px;margin-bottom:10px;">
-      <input id="auth-pass" type="password" placeholder="设置 / 输入密码" style="width:100%;box-sizing:border-box;padding:12px 14px;border:2px solid rgba(180,130,70,0.15);border-radius:12px;font-size:16px;font-family:inherit;text-align:center;margin-bottom:6px;">
-      <p id="auth-msg" style="font-size:0.78rem;color:#ef4444;text-align:center;font-weight:600;min-height:1.2em;margin:0 0 10px;"></p>
-      <button id="auth-do-btn" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">登录 / 注册</button>
-      <button id="auth-cancel-btn" style="width:100%;padding:10px;margin-top:8px;border:2px solid rgba(180,130,70,0.12);border-radius:12px;background:none;color:#c4943a;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">取消</button>
+// === 全屏登录门 ===
+function ensureGate() {
+  if (document.getElementById('auth-gate')) return;
+  const gate = document.createElement('div');
+  gate.id = 'auth-gate';
+  gate.style.cssText = `position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at top, rgba(245,158,11,0.06) 0%, transparent 60%), #f5f0e8;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;`;
+  gate.innerHTML = `
+    <div style="background:#faf6ee;border-radius:24px;padding:34px 36px;width:min(380px,94vw);box-shadow:0 1px 3px rgba(0,0,0,0.06),0 0 0 1px #ece4d4,0 12px 40px rgba(0,0,0,.12);border:1px solid #ece4d4;text-align:center;">
+      <div style="font-size:44px;margin-bottom:8px;">🧬</div>
+      <h1 style="margin:0 0 4px;font-size:1.5rem;font-weight:800;color:#1e293b;letter-spacing:-.3px;">IG Biology Quiz</h1>
+      <p style="margin:0 0 22px;font-size:0.85rem;color:#78716c;font-weight:600;">Please sign in with your student ID</p>
+      <div style="display:flex;gap:10px;margin-bottom:18px;">
+        <button id="gate-signin-btn" style="flex:1;padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(245,158,11,.25);transition:all .25s;">Sign in</button>
+        <button id="gate-signup-btn" style="flex:1;padding:13px;border:2px solid rgba(180,130,70,.25);border-radius:14px;background:#fff;color:#c4943a;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;transition:all .25s;">Sign up</button>
+      </div>
+      <div id="gate-form" style="display:none;text-align:left;">
+        <div id="gate-form-title" style="font-size:0.95rem;font-weight:800;color:#1e293b;text-align:center;margin-bottom:12px;"></div>
+        <input id="gate-sid" placeholder="Student ID (8 digits)" maxlength="8" inputmode="numeric" autocomplete="username" style="width:100%;box-sizing:border-box;padding:12px 14px;border:2px solid rgba(180,130,70,.15);border-radius:12px;font-size:15px;font-family:inherit;text-align:center;letter-spacing:2px;margin-bottom:8px;">
+        <input id="gate-pass" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:12px 14px;border:2px solid rgba(180,130,70,.15);border-radius:12px;font-size:15px;font-family:inherit;text-align:center;margin-bottom:8px;">
+        <input id="gate-pass2" type="password" placeholder="Confirm password" style="width:100%;box-sizing:border-box;padding:12px 14px;border:2px solid rgba(180,130,70,.15);border-radius:12px;font-size:15px;font-family:inherit;text-align:center;margin-bottom:6px;display:none;">
+        <p id="gate-msg" style="font-size:0.78rem;color:#ef4444;text-align:center;font-weight:600;min-height:1.2em;margin:0 0 10px;"></p>
+        <button id="gate-go-btn" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Continue</button>
+        <button id="gate-back-btn" style="width:100%;padding:9px;margin-top:6px;border:none;background:none;color:#a8a29e;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">Back</button>
+      </div>
     </div>`;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
-  document.getElementById('auth-cancel-btn').onclick = () => overlay.style.display = 'none';
-  document.getElementById('auth-sid').focus();
-  const doAuth = async () => {
-    const sid = document.getElementById('auth-sid').value.trim();
-    const pass = document.getElementById('auth-pass').value;
-    const msg = document.getElementById('auth-msg');
-    if (!/^\d{8}$/.test(sid)) { msg.textContent = '学号必须是 8 位数字'; return; }
-    if (pass.length < 4) { msg.textContent = '密码至少 4 位'; return; }
-    msg.textContent = '处理中…';
-    msg.style.color = '#64748b';
-    try {
-      const hash = await sha256Hex(pass);
-      // 查用户是否存在
-      const users = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${sid}&select=student_id,pass_hash`);
-      if (users && users.length) {
-        if (users[0].pass_hash !== hash) { msg.style.color = '#ef4444'; msg.textContent = '密码错误'; return; }
-      } else {
-        await sbFetch(`/rest/v1/${SB_TABLE_USERS}`, { method: 'POST', body: JSON.stringify({ student_id: sid, pass_hash: hash }) });
-      }
-      currentUser = { studentId: sid };
-      sessionStorage.setItem('ig-auth-user', JSON.stringify(currentUser));
-      overlay.style.display = 'none';
-      renderAuthUI();
-      await syncCloudToLocal();
-    } catch (err) {
-      msg.style.color = '#ef4444';
-      msg.textContent = '失败：' + (err.message || '网络错误');
-    }
+  document.body.appendChild(gate);
+  document.getElementById('gate-signin-btn').onclick = () => showGateForm('signin');
+  document.getElementById('gate-signup-btn').onclick = () => showGateForm('signup');
+  document.getElementById('gate-back-btn').onclick = () => {
+    document.getElementById('gate-form').style.display = 'none';
+    toggleGateChoice(true);
   };
-  document.getElementById('auth-do-btn').onclick = doAuth;
-  document.getElementById('auth-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
-  document.getElementById('auth-sid').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('auth-pass').focus(); });
+  document.getElementById('gate-go-btn').onclick = doGateAuth;
+  ['gate-sid', 'gate-pass', 'gate-pass2'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doGateAuth(); });
+  });
+}
+
+let gateMode = null;
+function toggleGateChoice(show) {
+  document.getElementById('gate-signin-btn').style.display = show ? '' : 'none';
+  document.getElementById('gate-signup-btn').style.display = show ? '' : 'none';
+}
+function showGateForm(mode) {
+  gateMode = mode;
+  toggleGateChoice(false);
+  const form = document.getElementById('gate-form');
+  const pass2 = document.getElementById('gate-pass2');
+  form.style.display = 'block';
+  document.getElementById('gate-form-title').textContent = mode === 'signup' ? 'Create your account' : 'Welcome back';
+  pass2.style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('gate-msg').textContent = mode === 'signup' ? 'Use your student ID (8 digits) to register' : '';
+  document.getElementById('gate-go-btn').textContent = mode === 'signup' ? 'Create account' : 'Sign in';
+  document.getElementById('gate-sid').value = '';
+  document.getElementById('gate-pass').value = '';
+  pass2.value = '';
+  document.getElementById('gate-sid').focus();
+}
+
+async function doGateAuth() {
+  const sid = document.getElementById('gate-sid').value.trim();
+  const pass = document.getElementById('gate-pass').value;
+  const pass2 = document.getElementById('gate-pass2').value;
+  const msg = document.getElementById('gate-msg');
+  if (!/^\d{8}$/.test(sid)) { msg.textContent = 'Student ID must be exactly 8 digits'; return; }
+  if (pass.length < 4) { msg.textContent = 'Password must be at least 4 characters'; return; }
+  if (gateMode === 'signup' && pass !== pass2) { msg.textContent = 'Passwords do not match'; return; }
+  msg.style.color = '#64748b';
+  msg.textContent = 'Please wait…';
+  try {
+    const hash = await sha256Hex(pass);
+    const users = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${sid}&select=student_id,pass_hash`);
+    if (gateMode === 'signup') {
+      if (users && users.length) { msg.style.color = '#ef4444'; msg.textContent = 'This student ID is already registered — sign in instead'; return; }
+      await sbFetch(`/rest/v1/${SB_TABLE_USERS}`, { method: 'POST', body: JSON.stringify({ student_id: sid, pass_hash: hash }) });
+    } else {
+      if (!users || !users.length) { msg.style.color = '#ef4444'; msg.textContent = 'No account for this ID — sign up first'; return; }
+      if (users[0].pass_hash !== hash) { msg.style.color = '#ef4444'; msg.textContent = 'Wrong password'; return; }
+    }
+    currentUser = { studentId: sid };
+    sessionStorage.setItem('ig-auth-user', JSON.stringify(currentUser));
+    openGate(false);
+    renderAuthUI();
+    syncCloudToLocal();
+  } catch (err) {
+    msg.style.color = '#ef4444';
+    msg.textContent = 'Error: ' + (err.message || 'network problem');
+  }
+}
+
+function openGate(open) {
+  ensureGate();
+  document.getElementById('auth-gate').style.display = open ? 'flex' : 'none';
 }
 
 function logout() {
   currentUser = null;
   sessionStorage.removeItem('ig-auth-user');
   renderAuthUI();
+  openGate(true);
+  showGateForm('signin');
 }
 
-// === 云端同步 ===
-// 答一题上报（挂在 handleAnswer 里）
+// === 登录后顶栏 UI（排行榜 + 退出）===
+function renderAuthUI() {
+  const box = document.getElementById('auth-box');
+  if (!box) return;
+  if (currentUser) {
+    box.innerHTML = `
+      <span style="font-size:12px;font-weight:700;color:#1e293b;">ID ${escapeAuthHtml(currentUser.studentId)}</span>
+      <button id="leaderboard-btn" style="padding:6px 12px;border-radius:10px;border:none;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">🏆 Leaderboard</button>
+      <button id="auth-logout-btn" style="padding:6px 12px;border-radius:10px;border:1.5px solid rgba(180,130,70,0.2);background:#fff;color:#c4943a;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">Log out</button>`;
+    document.getElementById('auth-logout-btn').onclick = logout;
+    document.getElementById('leaderboard-btn').onclick = openLeaderboard;
+  } else {
+    box.innerHTML = '';
+  }
+}
+
+// === 云同步 ===
 async function recordAnswerCloud(qItem, correct) {
   if (!currentUser || !qItem) return;
   try {
@@ -133,54 +175,42 @@ async function recordAnswerCloud(qItem, correct) {
         correct: !!correct
       })
     });
-  } catch (e) { /* 静默：本地记录已生效，云端失败不阻塞答题 */ }
+  } catch (e) {}
 }
 
-// 登录后：拉云端全部作答，重建/合并错题本
 async function syncCloudToLocal() {
   if (!currentUser) return;
   try {
     const rows = await sbFetch(`/rest/v1/${SB_TABLE_ANSWERS}?student_id=eq.${currentUser.studentId}&select=q_path,chapter,correct,answered_at&order=answered_at.desc&limit=10000`);
     if (!rows || !rows.length) return;
-    // 云端每题取最近一次结果
     const latest = {};
-    for (const r of rows) {
-      if (!latest[r.q_path]) latest[r.q_path] = r;
-    }
+    for (const r of rows) if (!latest[r.q_path]) latest[r.q_path] = r;
     const cloudWrong = Object.values(latest).filter(r => !r.correct);
-    // 本地错题本：保留（含时间戳等展示数据），云端的错题补充进来（去重）
     const local = (typeof getWrongBook === 'function') ? getWrongBook() : [];
     const localSet = new Set(local.map(r => r.question));
-    const chapterNames = (typeof QUESTION_CHAPTERS !== 'undefined') ? QUESTION_CHAPTERS : [];
-    const chName = chId => {
-      const c = chapterNames.find(x => x.id === chId);
-      return c ? c.name : chId;
-    };
     const merged = local.slice();
     for (const r of cloudWrong) {
       if (localSet.has(r.q_path)) continue;
-      merged.push({ question: r.q_path, img: true, questionIndex: null, answer: '?', timestamp: Date.parse(r.answered_at) || Date.now(), chapter: chName(r.chapter) });
+      merged.push({ question: r.q_path, img: true, questionIndex: null, answer: '?', timestamp: Date.parse(r.answered_at) || Date.now() });
     }
     if (typeof saveWrongBook === 'function') saveWrongBook(merged);
-    if (typeof updateWrongBookBadge === 'function') updateWrongBookBadge();
-    // 已答题目集合，供 UI 展示用（不改变现有答题流程）
     window.igAnsweredSet = new Set(Object.keys(latest));
-  } catch (e) { /* 静默降级为本地模式 */ }
+  } catch (e) {}
 }
 
-// === 排行榜 ===
+// === 排行榜（全英文）===
 async function openLeaderboard() {
   let overlay = document.getElementById('lb-modal');
   if (overlay) { overlay.style.display = 'flex'; }
   else {
     overlay = document.createElement('div');
     overlay.id = 'lb-modal';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(245,240,232,0.9);display:flex;align-items:center;justify-content:center;z-index:4000;padding:20px;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(245,240,232,0.9);display:flex;align-items:center;justify-content:center;z-index:9500;padding:20px;';
     overlay.innerHTML = `
       <div style="background:#fff;border-radius:24px;padding:28px;width:min(480px,92vw);max-height:85vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25);border:1px solid #e0d8c8;">
-        <h2 style="margin:0 0 16px;font-size:1.25rem;font-weight:800;color:#1e293b;text-align:center;">🏆 排行榜</h2>
-        <div id="lb-body" style="font-size:0.9rem;color:#64748b;text-align:center;">加载中…</div>
-        <button id="lb-close-btn" style="width:100%;padding:11px;margin-top:16px;border:2px solid rgba(180,130,70,0.12);border-radius:12px;background:none;color:#c4943a;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">关闭</button>
+        <h2 style="margin:0 0 16px;font-size:1.25rem;font-weight:800;color:#1e293b;text-align:center;">🏆 Leaderboard</h2>
+        <div id="lb-body" style="font-size:0.9rem;color:#64748b;text-align:center;">Loading…</div>
+        <button id="lb-close-btn" style="width:100%;padding:11px;margin-top:16px;border:2px solid rgba(180,130,70,0.12);border-radius:12px;background:none;color:#c4943a;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">Close</button>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
@@ -190,14 +220,14 @@ async function openLeaderboard() {
   const body = document.getElementById('lb-body');
   try {
     const data = await sbFetch('/rest/v1/ig_leaderboard?select=*&order=unique_questions.desc&limit=100');
-    if (!data || !data.length) { body.innerHTML = '<p>还没有记录，先去刷题吧！</p>'; return; }
+    if (!data || !data.length) { body.innerHTML = '<p>No records yet — go answer some questions!</p>'; return; }
     const me = currentUser ? currentUser.studentId : null;
     body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
       <thead><tr style="border-bottom:2px solid #e0d8c8;color:#78716c;font-size:0.78rem;">
         <th style="padding:8px 6px;text-align:center;">#</th>
-        <th style="padding:8px 6px;text-align:left;">学号</th>
-        <th style="padding:8px 6px;text-align:right;">做题数</th>
-        <th style="padding:8px 6px;text-align:right;">正确率</th>
+        <th style="padding:8px 6px;text-align:left;">Student ID</th>
+        <th style="padding:8px 6px;text-align:right;">Questions</th>
+        <th style="padding:8px 6px;text-align:right;">Accuracy</th>
       </tr></thead>
       <tbody>${data.map((row, i) => `
         <tr style="border-bottom:1px solid #f0ebe0;${row.student_id === me ? 'background:rgba(245,158,11,0.12);font-weight:800;' : ''}">
@@ -208,10 +238,14 @@ async function openLeaderboard() {
         </tr>`).join('')}</tbody>
     </table>`;
   } catch (e) {
-    body.innerHTML = '<p style="color:#ef4444;">加载失败：' + escapeAuthHtml(e.message || '网络错误') + '</p>';
+    body.innerHTML = '<p style="color:#ef4444;">Failed to load: ' + escapeAuthHtml(e.message || 'network error') + '</p>';
   }
 }
 
-// === 初始化 ===
-document.addEventListener('DOMContentLoaded', renderAuthUI);
-if (document.readyState !== 'loading') renderAuthUI();
+// === 启动：未登录强制弹门，已登录直接进 ===
+function authInit() {
+  renderAuthUI();
+  if (!currentUser) openGate(true);
+}
+document.addEventListener('DOMContentLoaded', authInit);
+if (document.readyState !== 'loading') authInit();
