@@ -302,7 +302,7 @@ async function loadMyPreferredName() {
 
 async function savePreferredName(name) {
   if (!currentUser || !validSid(currentUser.studentId)) return false;
-  const v = String(name || '').trim().slice(0, 20);
+  const v = String(name || '').trim().slice(0, 40);
   try {
     // 走 SECURITY DEFINER RPC（ig_users 表的 PATCH 被 RLS 拦截，直写会静默失败）
     const ok = await sbFetch('/rest/v1/rpc/set_preferred_name', { method: 'POST', body: JSON.stringify({ p_sid: currentUser.studentId, p_name: v }) });
