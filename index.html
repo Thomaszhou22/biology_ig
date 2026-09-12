@@ -994,10 +994,14 @@ function settleMockExam() {
     if (rsBtn) rsBtn.style.display = '';
     questionIndex = deepQuestions.length;
     clearProgress();
+    // 隐藏整个答题面板：结算后不再显示分数条/选项/继续作答状态
+    document.getElementById('info-panel').style.display = 'none';
+    document.getElementById('abort-btn').style.display = 'none';
+    document.getElementById('score-display').style.display = 'none';
     showFinishOverlay();
-    document.getElementById('abort-btn').style.display = 'block';
-    document.getElementById('score-display').style.display = 'flex';
-    updateScoreDisplay();
+    // 通知壳层：这是 mock 的结算，Done 后回 Mock 落地页
+    window.__mockFinishPending = true;
+    window.dispatchEvent(new CustomEvent('mock-finished'));
 }
 
 function handleAnswer(letter, clickedBtn) {
@@ -1090,6 +1094,8 @@ document.getElementById('finish-restart-btn').onclick = () => {
     clearProgress();
     document.getElementById('abort-btn').style.display = 'none';
     hideFinishOverlay();
+    // mock 结算：面板已隐藏，跳过主界面重置（由 mock-finished 事件处理路由）
+    if (window.__mockFinishPending) { window.__mockFinishPending = false; return; }
     // 重置回初始界面（Select chapters to start）
     deepQuestions = []; currentQuestionItem = null; questionIndex = 0; totalCorrect = 0; totalWrong = 0;
     document.getElementById('progress-bar').style.display = 'none';
@@ -1764,8 +1770,8 @@ showFinishOverlay = function() {
   document.getElementById('mock-timer-container').style.display = 'none';
   isMockExam = false;
   origShowFinishOverlay();
-  // Keep Quit button visible after mock exam ends
-  document.getElementById('abort-btn').style.display = 'block';
+  // 成绩单 Done 是唯一出口，不再显示 Quit
+  document.getElementById('abort-btn').style.display = 'none';
 };
 
 const _mockBtn = document.getElementById('mock-exam-btn'); if (_mockBtn) _mockBtn.onclick = startMockExam;

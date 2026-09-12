@@ -91,6 +91,21 @@ function buildShell() {
     btn.onclick = () => { navigate(btn.dataset.page, true); closeNav(); };
   });
   window.addEventListener('popstate', () => navigate(pageFromPath(), false));
+  // mock 完整结算：Done 点击后回 Mock 落地页
+  window.addEventListener('mock-finished', () => {
+    const btn = document.getElementById('finish-restart-btn');
+    if (!btn) return;
+    const handler = () => {
+      btn.removeEventListener('click', handler);
+      navigate('mock', true);
+      const start = $('mock-start-btn');
+      if (start) start.style.display = '';
+      const desc = document.querySelector('#view-mock-body > p');
+      if (desc) desc.style.display = '';
+    };
+    btn.addEventListener('click', handler);
+  });
+
   // 中途退出 mock：回 Mock 落地页（紫色 Start 界面）
   window.addEventListener('mock-abandoned', () => {
     // 先把题目面板移回主页并整体隐藏，避免 "Select chapters to start" 落在落地页下方
@@ -252,6 +267,7 @@ function renderMockView() {
       // 开始后：题目面板直接进入本页，隐藏开始按钮，无需再点任何东西
       const host = $('mock-page-quiz');
       const panel = $('info-panel');
+      if (panel) panel.style.display = '';
       if (panel && host && panel.parentElement !== host) host.appendChild(panel);
       const btn = $('mock-start-btn');
       if (btn) btn.style.display = 'none';
@@ -261,6 +277,7 @@ function renderMockView() {
   if (active) {
     const host = $('mock-page-quiz');
     const panel = $('info-panel');
+    if (panel) panel.style.display = '';
     if (panel && host && panel.parentElement !== host) host.appendChild(panel);
     const btn = $('mock-start-btn');
     if (btn) btn.style.display = 'none';
