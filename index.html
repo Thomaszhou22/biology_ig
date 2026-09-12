@@ -1725,7 +1725,11 @@ function commitSessionRecords() {
   }
   pendingWrongRecords = []; pendingCloudAnswers = [];
 }
-function discardSessionRecords() { pendingWrongRecords = []; pendingCloudAnswers = []; }
+function discardSessionRecords() {
+  // 规则（2026-09-13 变更）：中途退出——错题仍入错题本（诚实面对漏洞），分数与云端作答丢弃
+  for (const p of pendingWrongRecords) addWrongQuestionRecord(p.qItem, p.qNumber);
+  pendingWrongRecords = []; pendingCloudAnswers = [];
+}
 
 function startMockExam() {
   // Collect all questions from all chapters
@@ -1870,7 +1874,7 @@ abortQuiz = function() {
   if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
   const wasMock = isMockExam;
   const wasPaper = isPaperMode;
-  discardSessionRecords(); // 中途退出：已做题不计数、错题不入库
+  discardSessionRecords(); // 中途退出：分数/云端丢弃，错题保留入库
   isMockExam = false;
   isPaperMode = false;
   document.getElementById('mock-timer-container').style.display = 'none';
