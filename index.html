@@ -276,7 +276,7 @@ body > * { position: relative; z-index: 1; }
     </div>
 
 
-    <div id="info-panel">
+    <div id="info-panel" style="display:none;">
         <div id="info-panel-header">
             <div style="font-size: 16px; font-weight: bold;">
                 <span id="question-counter">Select chapters to start</span>
@@ -1195,6 +1195,7 @@ document.getElementById('wrong-book-overlay').addEventListener('click', closeWro
 (function bootQuiz() {
     const saved = loadProgress();
     if (saved && saved.deepQuestions && saved.deepQuestions.length > 0) {
+        document.getElementById('info-panel').style.display = '';
         deepQuestions = saved.deepQuestions;
         questionIndex = saved.questionIndex || 0;
         totalCorrect = saved.totalCorrect || 0;
