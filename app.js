@@ -21,12 +21,12 @@ const ICONS = {
 };
 
 const PAGES = [
-  { id: 'home', label: 'Quiz', icon: 'quiz', i18n: 'nav.quiz' },
-  { id: 'mock', label: 'Mock Exam', i18n: 'nav.mock', icon: 'clock' },
-  { id: 'pk', label: '1v1 PK', i18n: 'nav.pk', icon: 'swords' },
-  { id: 'mistakes', label: 'Mistake Collection', i18n: 'nav.mistakes', icon: 'book' },
-  { id: 'leaderboard', label: 'Leaderboard', i18n: 'nav.leaderboard', icon: 'trophy' },
-  { id: 'ai', label: 'AI Analysis', i18n: 'nav.ai', icon: 'sparkles' }
+  { id: 'home', label: 'Quiz', icon: 'quiz' },
+  { id: 'mock', label: 'Mock Exam', icon: 'clock' },
+  { id: 'pk', label: '1v1 PK', icon: 'swords' },
+  { id: 'mistakes', label: 'Mistake Collection', icon: 'book' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy' },
+  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' }
 ];
 
 let currentPage = 'home';
@@ -67,7 +67,6 @@ function buildShell() {
     <div class="topbar-title">${ICONS.dna}<span>IG Biology Quiz</span></div>
     <div style="display:flex;align-items:center;gap:6px;">
       <a id="topbar-github" href="https://github.com/Thomaszhou22/biology_jump_ig" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;color:#334155;text-decoration:none;">${ICONS.github}</a>
-      <button id="topbar-settings" title="Settings" aria-label="Settings" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:10px;background:none;color:#334155;cursor:pointer;">${ICONS.gear}</button>
       <div id="topbar-auth"></div>
     </div>`;
   document.body.prepend(bar);
@@ -83,15 +82,13 @@ function buildShell() {
       <button id="nav-close" aria-label="Close menu">${ICONS.x}</button>
     </div>
     <div class="drawer-list">
-      ${PAGES.map(p => `<button class="drawer-item" data-page="${p.id}">${ICONS[p.icon]}<span${p.i18n ? ` data-i18n="${p.i18n}"` : ''}>${p.label}</span></button>`).join('')}
+      ${PAGES.map(p => `<button class="drawer-item" data-page="${p.id}">${ICONS[p.icon]}<span>${p.label}</span></button>`).join('')}
     </div>
     <div id="nav-lock-note" style="margin:0 16px 8px;padding:8px 12px;border-radius:10px;background:rgba(124,58,237,.08);color:#7c3aed;font-size:.75rem;font-weight:700;text-align:center;opacity:0;transition:opacity .3s;"></div>
     <div class="drawer-foot" id="drawer-user"></div>`;
   document.body.append(scrim, drawer);
 
   $('nav-toggle').onclick = () => { drawer.classList.add('open'); scrim.classList.add('show'); };
-  const settingsBtn = $('topbar-settings');
-  if (settingsBtn && typeof openSettingsModal === 'function') settingsBtn.onclick = openSettingsModal;
   const closeNav = () => { drawer.classList.remove('open'); scrim.classList.remove('show'); };
   $('nav-close').onclick = closeNav;
   scrim.onclick = closeNav;
@@ -171,8 +168,6 @@ function buildShell() {
   if (mockHead) mockHead.style.marginBottom = '14px';
 
   injectStyles();
-  // 壳构建完成后再应用一次 i18n（抽屉项是刚创建的，错过了 settings.js 的首遍翻译）
-  if (typeof igApplyI18n === 'function') igApplyI18n();
 }
 
 function injectStyles() {
@@ -309,7 +304,8 @@ function renderMistakesView() {
     body.innerHTML = `<p class="page-empty">No mistakes yet. Keep it up!</p>`;
     return;
   }
-  // 按题目聚合：显示每题累计错误次数
+
+  // 按题目聚合（错误次数），再按章节分组
   const byQ = new Map();
   for (const r of records) {
     const k = r.question || JSON.stringify(r);
@@ -318,40 +314,87 @@ function renderMistakesView() {
     e.count++;
     if (r.timestamp && r.timestamp > e.lastTs) e.lastTs = r.timestamp;
   }
-  const items = [...byQ.values()].sort((a, b) => b.count - a.count || b.lastTs - a.lastTs);
+  const chapters = new Map(); // chId -> { name, items }
+  const CHS = (typeof QUESTION_CHAPTERS !== 'undefined') ? QUESTION_CHAPTERS : [];
+  for (const it of byQ.values()) {
+    const chId = (it.question || '').split('/')[0] || 'other';
+    const chName = (CHS.find(c => c.id === chId) || {}).name || chId;
+    if (!chapters.has(chId)) chapters.set(chId, { name: chName, items: [] });
+    chapters.get(chId).items.push(it);
+  }
+  const chArr = [...chapters.entries()].map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => b.items.reduce((s, i) => s + i.count, 0) - a.items.reduce((s, i) => s + i.count, 0));
+
+  // Render: chapter accordion（点击展开才加载图片 —— 懒加载）
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <span style="font-weight:800;color:#334155;font-size:.95rem;">${items.length} question(s) · ${records.length} wrong attempt(s)</span>
+      <span style="font-weight:800;color:#334155;font-size:.95rem;">${chArr.length} chapter(s) · ${byQ.size} question(s) · ${records.length} wrong attempt(s)</span>
     </div>
     <button id="mistakes-generate-btn" class="view-action-btn" style="margin-bottom:16px;">
       ${ICONS.sparkles}<span>Generate a Paper from Mistakes</span></button>
     <div id="mistakes-gen-setup" style="display:none;margin-bottom:16px;background:#fff;border:1px solid #ece4d4;border-radius:14px;padding:14px;">
-      <p style="font-size:.8rem;color:#78716c;margin:0 0 8px;font-weight:700;">Number of questions (weighted by wrong count)</p>
+      <p style="font-size:.8rem;color:#78716c;margin:0 0 8px;font-weight:700;">Select chapters (leave empty = all)</p>
+      <div id="mistakes-paper-chapters" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:180px;overflow-y:auto;margin-bottom:10px;">
+        ${chArr.map(c => `<label style="display:flex;align-items:center;gap:6px;padding:6px 8px;border:1.5px solid rgba(99,102,241,.1);border-radius:10px;cursor:pointer;font-size:.75rem;color:#334155;">
+          <input type="checkbox" value="${escapeHtml(c.id)}" data-max="${c.items.length}" style="accent-color:#c4943a;">${escapeHtml(c.name)} <span style="color:#a8a29e;">(${c.items.length})</span>
+        </label>`).join('')}
+      </div>
+      <p style="font-size:.8rem;color:#78716c;margin:0 0 6px;font-weight:700;">Number of questions (weighted by wrong count)</p>
       <div style="display:flex;gap:8px;align-items:center;">
         <input id="mistakes-paper-count" type="number" min="5" max="50" value="10" style="width:80px;padding:8px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;font-weight:700;text-align:center;">
         <button id="mistakes-paper-go" style="flex:1;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Start Paper</button>
       </div>
     </div>
-    ${items.map(r => `
-      <div class="mistake-item">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:.82rem;color:#78716c;">
-            <strong style="color:#334155;">${escapeHtml((r.question || '').split('/')[0])}</strong> ·
-            ${r.img ? 'image question' : escapeHtml(String(r.question || '').slice(0, 80))}
-            ${r.lastTs ? ' · ' + new Date(r.lastTs).toLocaleDateString() : ''}
-          </div>
-          <span style="flex-shrink:0;margin-left:10px;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:800;background:${r.count >= 3 ? '#fee2e2' : r.count === 2 ? '#fef3c7' : '#f1f5f9'};color:${r.count >= 3 ? '#dc2626' : r.count === 2 ? '#d97706' : '#64748b'};">wrong ×${r.count}</span>
-        </div>
-        <div>${r.img
-          ? `<img src="${ASSET_BASE}questions/${escapeHtml(r.question)}" onclick="zoomImage(this.src)" alt="question image">`
-          : `<div style="color:#1e293b;font-weight:600;">${escapeHtml(String(r.question || ''))}</div>`}
-        </div>
-      </div>`).join('')}`;
-  // Generate Paper 流程
+    <div id="mistakes-chapters-list">
+      ${chArr.map((c, ci) => `
+      <div class="mistake-chapter" data-ch="${ci}" style="margin-bottom:10px;">
+        <button class="mk-ch-head" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border:1px solid #ece4d4;border-radius:14px;cursor:pointer;font-family:inherit;text-align:left;">
+          <span style="font-size:.9rem;font-weight:800;color:#334155;flex:1;">${escapeHtml(c.name)}</span>
+          <span style="font-size:.75rem;color:#a8a29e;font-weight:700;">${c.items.length} Q · ${c.items.reduce((s, i) => s + i.count, 0)} wrong</span>
+          <span class="mk-arrow" style="color:#a8a29e;font-size:.8rem;transition:transform .2s;">▾</span>
+        </button>
+        <div class="mk-ch-body" style="display:none;padding-top:8px;"></div>
+      </div>`).join('')}
+    </div>`;
+
+  // 章节折叠/展开（懒加载：展开时才渲染图片）
+  body.querySelectorAll('.mk-ch-head').forEach(head => {
+    head.onclick = () => {
+      const wrap = head.closest('.mistake-chapter');
+      const chBody = wrap.querySelector('.mk-ch-body');
+      const arrow = head.querySelector('.mk-arrow');
+      const opening = chBody.style.display === 'none';
+      chBody.style.display = opening ? 'block' : 'none';
+      arrow.style.transform = opening ? 'rotate(180deg)' : '';
+      if (opening && !chBody.dataset.loaded) {
+        chBody.dataset.loaded = '1';
+        const c = chArr[+wrap.dataset.ch];
+        chBody.innerHTML = c.items.map(r => `
+          <div class="mistake-item">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div style="font-size:.82rem;color:#78716c;">${escapeHtml(String(r.question || '').split('/').pop())}
+                ${r.lastTs ? ' · ' + new Date(r.lastTs).toLocaleDateString() : ''}</div>
+              <span style="flex-shrink:0;margin-left:10px;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:800;background:${r.count >= 3 ? '#fee2e2' : r.count === 2 ? '#fef3c7' : '#f1f5f9'};color:${r.count >= 3 ? '#dc2626' : r.count === 2 ? '#d97706' : '#64748b'};">wrong ×${r.count}</span>
+            </div>
+            ${r.img ? `<img loading="lazy" src="${ASSET_BASE}questions/${escapeHtml(r.question)}" onclick="zoomImage(this.src)" alt="question image" style="max-width:220px;border-radius:8px;cursor:zoom-in;">` : ''}
+          </div>`).join('');
+      }
+    };
+  });
+
+  // Generate Paper 流程（章节选择 + 题数上限校验）
   const genBtn = $('mistakes-generate-btn');
   const setupBox = $('mistakes-gen-setup');
   genBtn.onclick = () => { setupBox.style.display = setupBox.style.display === 'none' ? 'block' : 'none'; };
-  $('mistakes-paper-go').onclick = () => mistakesStartPaper(items);
+  $('mistakes-paper-go').onclick = () => {
+    const checked = [...setupBox.querySelectorAll('#mistakes-paper-chapters input:checked')].map(i => i.value);
+    const pool = checked.length ? [...byQ.values()].filter(it => checked.includes((it.question || '').split('/')[0])) : [...byQ.values()];
+    const max = pool.length;
+    const countInput = $('mistakes-paper-count');
+    const want = parseInt(countInput.value) || 10;
+    if (want > max) { countInput.value = max; alert('Only ' + max + ' wrong question(s) available — count adjusted.'); return; }
+    mistakesStartPaper(pool);
+  };
 }
 
 // === 错题组卷：错误次数越多越可能被抽中 ===
