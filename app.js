@@ -692,15 +692,15 @@ async function renderAccountPage() {
       <p style="font-size:1rem;font-weight:800;color:#1e293b;margin:0 0 16px;">${escapeHtml(me.studentId)}</p>
       <p style="font-size:.8rem;color:#78716c;font-weight:700;margin:0 0 8px;">Preferred Name <span style="color:#a8a29e;font-weight:500;">(shown in PK & leaderboards)</span></p>
       <div style="display:flex;gap:8px;">
-        <input id="acc-pname" maxlength="20" placeholder="e.g. Tom" style="flex:1;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;">
+        <input id="acc-pname" maxlength="20" placeholder="e.g. Tom" autocomplete="off" name="acc-pname-not-login" readonly onfocus="this.removeAttribute('readonly')" style="flex:1;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;">
         <button id="acc-pname-save" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Save</button>
       </div>
       <p id="acc-pname-msg" style="font-size:.75rem;color:#10b981;font-weight:700;min-height:1.2em;margin:6px 0 0;"></p>
     </div>
     <div style="background:#fff;border:1px solid #ece4d4;border-radius:14px;padding:16px;margin-bottom:14px;">
       <p style="font-size:.8rem;color:#78716c;font-weight:700;margin:0 0 10px;">Change Password</p>
-      <input id="acc-old-pass" type="password" placeholder="Current password" style="width:100%;box-sizing:border-box;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;margin-bottom:8px;">
-      <input id="acc-new-pass" type="password" placeholder="New password (min 4 chars)" style="width:100%;box-sizing:border-box;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;margin-bottom:10px;">
+      <input id="acc-old-pass" type="password" placeholder="Current password" autocomplete="new-password" name="acc-old-not-login" readonly onfocus="this.removeAttribute('readonly')" style="width:100%;box-sizing:border-box;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;margin-bottom:8px;">
+      <input id="acc-new-pass" type="password" placeholder="New password (min 4 chars)" autocomplete="new-password" name="acc-new-not-login" readonly onfocus="this.removeAttribute('readonly')" style="width:100%;box-sizing:border-box;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;margin-bottom:10px;">
       <button id="acc-pass-btn" style="width:100%;padding:11px;border:none;border-radius:10px;background:#334155;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Update Password</button>
       <p id="acc-pass-msg" style="font-size:.75rem;font-weight:700;min-height:1.2em;margin:6px 0 0;"></p>
     </div>
