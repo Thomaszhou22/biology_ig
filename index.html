@@ -601,7 +601,7 @@ function loadQuestionsFromChapters(chapterIds, maxCount) {
             const needed = Math.min(chapterAlloc[chId] || 0, chapterBuckets[chId].length);
             const pool = chapterBuckets[chId];
             // Give 3x weight to previously-wrong questions
-            const weighted = pool.map(q => ({ ...q, _w: (wrongByQuestion[q.q] || 0) > 0 ? 3 : 1 }));
+            const weighted = pool.map(q => { const c = wrongByQuestion[q.q] || 0; return { ...q, _w: c > 0 ? Math.min(2 + 2 * c, 10) : 1 }; });
             const picked = [];
             const remaining = weighted.slice();
             while (picked.length < needed && remaining.length > 0) {
@@ -645,7 +645,8 @@ function loadQuestionsWithPerChapterLimits(chapterIds, perChapterLimits) {
             const qPath = ch.id + '/q' + num + '.jpg';
             const ans = ch.answers ? ch.answers[i - 1] : null;
             const isWrong = (wrongByQuestion[qPath] || 0) > 0;
-            pool.push({ q: qPath, img: true, a: ans ? ans.a : '?', chapter: ch.name, _w: isWrong ? 3 : 1 });
+            const _c = wrongByQuestion[qPath] || 0;
+            pool.push({ q: qPath, img: true, a: ans ? ans.a : '?', chapter: ch.name, _w: _c > 0 ? Math.min(2 + 2 * _c, 10) : 1 });
         }
 
         // If limit >= pool size, take all; otherwise weighted sample
@@ -1649,7 +1650,7 @@ function startMockExam() {
     const isWrong = (wrongByQuestion[q.q] || 0) > 0;
     const chapterWrongRatio = totalWrongCount > 0 ? (wrongByChapter[chId] || 0) / totalWrongCount : 0;
     let w = 1;
-    if (isWrong) w += 3;
+    if (isWrong) w += Math.min(2 + 2 * (wrongByQuestion[q.q] || 0), 10);
     // Boost chapters that have wrong records
     if (chapterWrongRatio > 0) w += chapterWrongRatio * 2;
     return { ...q, _w: w };

@@ -261,17 +261,30 @@ function renderMistakesView() {
     body.innerHTML = `<p class="page-empty">No mistakes yet. Keep it up!</p>`;
     return;
   }
+  // 按题目聚合：显示每题累计错误次数
+  const byQ = new Map();
+  for (const r of records) {
+    const k = r.question || JSON.stringify(r);
+    if (!byQ.has(k)) byQ.set(k, { ...r, count: 0, lastTs: 0 });
+    const e = byQ.get(k);
+    e.count++;
+    if (r.timestamp && r.timestamp > e.lastTs) e.lastTs = r.timestamp;
+  }
+  const items = [...byQ.values()].sort((a, b) => b.count - a.count || b.lastTs - a.lastTs);
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <span style="font-weight:800;color:#334155;font-size:.95rem;">${records.length} record(s)</span>
+      <span style="font-weight:800;color:#334155;font-size:.95rem;">${items.length} question(s) · ${records.length} wrong attempt(s)</span>
       <button id="mistakes-clear-btn" class="topbar-btn" style="background:#fff;border:1.5px solid rgba(220,53,69,.25);color:#dc3545;">${ICONS.trash} Clear All</button>
     </div>
-    ${records.map(r => `
+    ${items.map(r => `
       <div class="mistake-item">
-        <div style="font-size:.82rem;color:#78716c;margin-bottom:8px;">
-          <strong style="color:#334155;">${escapeHtml((r.question || '').split('/')[0])}</strong> ·
-          ${r.img ? 'image question' : escapeHtml(String(r.question || '').slice(0, 80))}
-          ${r.timestamp ? ' · ' + new Date(r.timestamp).toLocaleDateString() : ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:.82rem;color:#78716c;">
+            <strong style="color:#334155;">${escapeHtml((r.question || '').split('/')[0])}</strong> ·
+            ${r.img ? 'image question' : escapeHtml(String(r.question || '').slice(0, 80))}
+            ${r.lastTs ? ' · ' + new Date(r.lastTs).toLocaleDateString() : ''}
+          </div>
+          <span style="flex-shrink:0;margin-left:10px;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:800;background:${r.count >= 3 ? '#fee2e2' : r.count === 2 ? '#fef3c7' : '#f1f5f9'};color:${r.count >= 3 ? '#dc2626' : r.count === 2 ? '#d97706' : '#64748b'};">wrong ×${r.count}</span>
         </div>
         <div>${r.img
           ? `<img src="${ASSET_BASE}questions/${escapeHtml(r.question)}" onclick="zoomImage(this.src)" alt="question image">`
