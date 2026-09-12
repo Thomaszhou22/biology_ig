@@ -1039,6 +1039,15 @@ function settleMockExam() {
     document.getElementById('info-panel').style.display = 'none';
     document.getElementById('abort-btn').style.display = 'none';
     document.getElementById('score-display').style.display = 'none';
+    // 重置 quiz 状态：切回 Quiz 页时应显示 Select chapters，而非 mock 最后一题
+    deepQuestions = []; currentQuestionItem = null; isAnswering = false;
+    questionIndex = 0; totalCorrect = 0; totalWrong = 0;
+    document.getElementById('question-counter').textContent = 'Select chapters to start';
+    document.getElementById('q-text').innerHTML = 'Click the button below to select chapters';
+    document.getElementById('q-image').style.display = 'none';
+    document.getElementById('options').innerHTML = '';
+    document.getElementById('msg').style.display = 'none';
+    document.getElementById('progress-bar').style.display = 'none';
     showFinishOverlay();
     // mock 成绩单补充：已答/未答说明（部分交卷时总分只含已答题）
     const answeredN = Object.keys(mockAnswers).length;
