@@ -67,7 +67,24 @@ body > * { position: relative; z-index: 1; }
 #mock-grid .mg-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:3px; vertical-align:-1px; }
 #mock-flag-btn { background:#fff; color:#d97706; border:2px solid rgba(217,119,6,.3); }
 #mock-flag-btn.flagged { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
-@media (max-width:900px) { #mock-grid { display:none !important; } }
+/* 移动端答题卡：抽屉式，右侧箭头拉出/收起 */
+@media (max-width:900px) {
+  #mock-grid {
+    position: fixed; right: 0; top: 50%; transform: translate(calc(100% + 6px), -50%);
+    transition: transform .25s ease; width: 172px; bottom: auto; max-height: 70vh;
+    border-radius: 16px 0 0 16px; z-index: 4600; display: none;
+  }
+  #mock-grid.open-mobile { transform: translate(0, -50%); }
+  #mock-grid.mobile-shown { display: block; }
+  #mock-grid-toggle {
+    position: fixed; right: 0; top: 50%; transform: translateY(-50%);
+    width: 30px; height: 64px; border: 1px solid #ece4d4; border-right: none;
+    border-radius: 10px 0 0 10px; background: #faf6ee; color: #6366f1;
+    font-size: 15px; cursor: pointer; z-index: 4650; display: flex;
+    align-items: center; justify-content: center; box-shadow: -2px 0 8px rgba(0,0,0,.08);
+  }
+}
+#mock-grid-toggle { display: none; }
 .status-msg { font-weight: 700; text-align: center; padding: 12px; border-radius: 12px; margin-top: 12px; display: none; font-size: 15px; letter-spacing: 0.5px; animation: msgIn 0.3s ease; }
 @keyframes msgIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
 .correct { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border: 1px solid rgba(16,185,129,0.3); }
@@ -341,6 +358,7 @@ html[data-theme="dark"] .mp-note, html[data-theme="dark"] .view-page p, html[dat
             </div>
         </div>
         <div id="msg" class="status-msg"></div>
+    <button id="mock-grid-toggle" aria-label="Toggle question grid">◀</button>
     <div id="mock-grid">
       <div class="mg-title">QUESTIONS</div>
       <div class="mg-cells" id="mock-grid-cells"></div>
@@ -1031,6 +1049,9 @@ function settleMockExam() {
     const mockNav = document.getElementById('mock-nav');
     if (mockNav) mockNav.style.display = 'none';
     document.getElementById('mock-grid').style.display = 'none';
+    document.getElementById('mock-grid').classList.remove('mobile-shown', 'open-mobile');
+    const _gt = document.getElementById('mock-grid-toggle');
+    if (_gt) { _gt.style.display = 'none'; _gt.textContent = '◀'; }
     const rsBtn = document.getElementById('reselect-chapters-btn');
     if (rsBtn) rsBtn.style.display = '';
     questionIndex = deepQuestions.length;
@@ -1048,6 +1069,8 @@ function settleMockExam() {
     document.getElementById('options').innerHTML = '';
     document.getElementById('msg').style.display = 'none';
     document.getElementById('progress-bar').style.display = 'none';
+    const _zh = document.getElementById('zoom-hint');
+    if (_zh) _zh.style.display = 'none';
     showFinishOverlay();
     // mock 成绩单补充：已答/未答说明（部分交卷时总分只含已答题）
     const answeredN = Object.keys(mockAnswers).length;
@@ -1772,7 +1795,15 @@ function startMockExam() {
   const rsBtn = document.getElementById('reselect-chapters-btn');
   if (rsBtn) rsBtn.style.display = 'none';
   buildMockGrid();
-  document.getElementById('mock-grid').style.display = 'block';
+  const _isMobile = window.matchMedia('(max-width:900px)').matches;
+  const _grid = document.getElementById('mock-grid');
+  const _gridToggle = document.getElementById('mock-grid-toggle');
+  if (_isMobile) {
+    _grid.classList.add('mobile-shown');
+    if (_gridToggle) _gridToggle.style.display = 'flex';
+  } else {
+    _grid.style.display = 'block';
+  }
 
   // Show timer bar
   const timerContainer = document.getElementById('mock-timer-container');
@@ -1845,6 +1876,9 @@ abortQuiz = function() {
   const mockNav = document.getElementById('mock-nav');
   if (mockNav) mockNav.style.display = 'none';
   document.getElementById('mock-grid').style.display = 'none';
+  document.getElementById('mock-grid').classList.remove('mobile-shown', 'open-mobile');
+  const _gt2 = document.getElementById('mock-grid-toggle');
+  if (_gt2) { _gt2.style.display = 'none'; _gt2.textContent = '◀'; }
   const rsBtn = document.getElementById('reselect-chapters-btn');
   if (rsBtn) rsBtn.style.display = '';
   origAbortQuiz();
@@ -1906,7 +1940,15 @@ function isMockExamActive() { return !!isMockExam; }
     const rsBtn0 = document.getElementById('reselect-chapters-btn');
     if (rsBtn0) rsBtn0.style.display = 'none';
     buildMockGrid();
-    document.getElementById('mock-grid').style.display = 'block';
+    const _rmMobile = window.matchMedia('(max-width:900px)').matches;
+    const _rmGrid = document.getElementById('mock-grid');
+    const _rmToggle = document.getElementById('mock-grid-toggle');
+    if (_rmMobile) {
+      _rmGrid.classList.add('mobile-shown');
+      if (_rmToggle) _rmToggle.style.display = 'flex';
+    } else {
+      _rmGrid.style.display = 'block';
+    }
     if (mockTimerInterval) clearInterval(mockTimerInterval);
     mockTimerInterval = setInterval(() => {
         mockTimeRemaining--;
@@ -1929,6 +1971,16 @@ function isMockExamActive() { return !!isMockExam; }
     if (currentQuestionItem) { isAnswering = true; renderCurrentQuestion(); }
 })();
 document.getElementById('mock-timer-hide').onclick = toggleMockTimer;
+// 移动端答题卡抽屉：箭头拉出/收起
+(function () {
+  const toggle = document.getElementById('mock-grid-toggle');
+  const grid = document.getElementById('mock-grid');
+  if (!toggle || !grid) return;
+  toggle.onclick = () => {
+    const open = grid.classList.toggle('open-mobile');
+    toggle.textContent = open ? '▶' : '◀';
+  };
+})();
 
 </script>
 <script src="auth.js"></script>
