@@ -281,7 +281,7 @@ body > * { position: relative; z-index: 1; }
             <p class="stat-line">Correct: <span id="finish-correct" style="color:#155724">0</span></p>
             <p class="stat-line">Wrong: <span id="finish-wrong" style="color:#721c24">0</span></p>
             <p class="stat-line">Accuracy: <span id="finish-acc">—</span></p>
-            <button type="button" id="finish-restart-btn">Reselect Chapters</button>
+            <button type="button" id="finish-restart-btn">Done</button>
         </div>
     </div>
 
@@ -991,6 +991,7 @@ function settleMockExam() {
         if (!a) return;
         if (a.correct) totalCorrect++;
         else { totalWrong++; addWrongQuestionRecord(q, i + 1); }
+        if (typeof recordAnswerCloud === 'function') recordAnswerCloud(q, a.correct);
     });
     if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
     isMockExam = false;
@@ -1019,7 +1020,6 @@ function handleAnswer(letter, clickedBtn) {
         mockAnswers[questionIndex] = { letter, correct };
         document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected-answer'));
         clickedBtn.classList.add('selected-answer');
-        if (typeof recordAnswerCloud === 'function') recordAnswerCloud(qItem, correct);
         updateMockNavState();
         updateMockGrid();
         return;
@@ -1041,11 +1041,11 @@ function handleAnswer(letter, clickedBtn) {
         totalWrong++;
         clickedBtn.classList.add('wrong-answer');
         showMsg(`❌ Wrong! Correct answer: ${qItem.a}`, 'incorrect');
-        addWrongQuestionRecord(qItem, questionIndex + 1);
+        pendingWrongRecords.push({ qItem, qNumber: questionIndex + 1 });
     }
 
-    // 云端上报（未登录时为 no-op）—— auth.js
-    if (typeof recordAnswerCloud === 'function') recordAnswerCloud(qItem, correct);
+    // 云端缓冲：完成时统一提交，中途退出不计数
+    pendingCloudAnswers.push({ qItem, correct });
 
     updateScoreDisplay();
 
@@ -1079,6 +1079,7 @@ function hideMsg() {
 
 // === Finish overlay ===
 function showFinishOverlay() {
+    commitSessionRecords();
     const total = totalCorrect + totalWrong;
     const acc = total > 0 ? Math.round((totalCorrect / total) * 100) + '%' : '—';
     document.getElementById('finish-total').textContent = total;
@@ -1098,6 +1099,17 @@ document.getElementById('finish-restart-btn').onclick = () => {
     clearProgress();
     document.getElementById('abort-btn').style.display = 'none';
     hideFinishOverlay();
+    // 重置回初始界面（Select chapters to start）
+    deepQuestions = []; currentQuestionItem = null; questionIndex = 0; totalCorrect = 0; totalWrong = 0;
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('score-display').style.display = 'none';
+    document.getElementById('question-counter').textContent = 'Select chapters to start';
+    document.getElementById('q-text').innerHTML = 'Click the button below to select chapters';
+    document.getElementById('q-image').style.display = 'none';
+    document.getElementById('options').innerHTML = '';
+    document.getElementById('msg').style.display = 'none';
+    // 若在 mock 页，面板归位主页
+    if (typeof navigate === 'function') navigate('home', true);
     openChapterModal();
 };
 
@@ -1591,6 +1603,17 @@ let isMockExam = false;
 let timerHidden = false;
 let mockAnswers = {}; // { questionIndex: {letter, correct} }
 let mockFlags = {};  // { questionIndex: true }
+// 会话缓冲：中途退出 = 不计数（错题不入库、云端不上报），完成时才提交
+let pendingWrongRecords = [];
+let pendingCloudAnswers = [];
+function commitSessionRecords() {
+  for (const p of pendingWrongRecords) addWrongQuestionRecord(p.qItem, p.qNumber);
+  if (typeof recordAnswerCloud === 'function') {
+    for (const a of pendingCloudAnswers) recordAnswerCloud(a.qItem, a.correct);
+  }
+  pendingWrongRecords = []; pendingCloudAnswers = [];
+}
+function discardSessionRecords() { pendingWrongRecords = []; pendingCloudAnswers = []; }
 
 function startMockExam() {
   // Collect all questions from all chapters
@@ -1726,6 +1749,7 @@ const origAbortQuiz = abortQuiz;
 abortQuiz = function() {
   if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
   const wasMock = isMockExam;
+  discardSessionRecords(); // 中途退出：已做题不计数、错题不入库
   isMockExam = false;
   document.getElementById('mock-timer-container').style.display = 'none';
   const mockNav = document.getElementById('mock-nav');
