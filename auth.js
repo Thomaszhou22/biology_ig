@@ -126,6 +126,7 @@ async function doGateAuth() {
     sessionStorage.setItem('ig-auth-user', JSON.stringify(currentUser));
     openGate(false);
     renderAuthUI();
+    renderDrawerUser();
     syncCloudToLocal();
   } catch (err) {
     msg.style.color = '#ef4444';
@@ -142,24 +143,41 @@ function logout() {
   currentUser = null;
   sessionStorage.removeItem('ig-auth-user');
   renderAuthUI();
+  renderDrawerUser();
   openGate(true);
   showGateForm('signin');
 }
 
+// 抽屉底部显示当前用户
+function renderDrawerUser() {
+  const foot = document.getElementById('drawer-user');
+  if (foot && currentUser) foot.textContent = 'Signed in as ' + currentUser.studentId;
+}
+
+// 供 app.js 使用的接口
+function igCurrentUser() { return currentUser; }
+async function loadLeaderboardRows() {
+  return await sbFetch('/rest/v1/ig_leaderboard?select=*&order=unique_questions.desc&limit=100');
+}
+
 // === 登录后顶栏 UI（排行榜 + 退出）===
 function renderAuthUI() {
-  const box = document.getElementById('auth-box');
-  if (!box) return;
-  if (currentUser) {
-    box.innerHTML = `
-      <span style="font-size:12px;font-weight:700;color:#1e293b;">ID ${escapeAuthHtml(currentUser.studentId)}</span>
-      <button id="leaderboard-btn" style="padding:6px 12px;border-radius:10px;border:none;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">🏆 Leaderboard</button>
-      <button id="auth-logout-btn" style="padding:6px 12px;border-radius:10px;border:1.5px solid rgba(180,130,70,0.2);background:#fff;color:#c4943a;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">Log out</button>`;
-    document.getElementById('auth-logout-btn').onclick = logout;
-    document.getElementById('leaderboard-btn').onclick = openLeaderboard;
-  } else {
-    box.innerHTML = '';
+  // 渲染到 app 壳顶栏（右上角）
+  const bar = document.getElementById('topbar-auth');
+  if (bar) {
+    if (currentUser) {
+      bar.innerHTML = `
+        <span style="font-size:12px;font-weight:700;color:#1e293b;">ID ${escapeAuthHtml(currentUser.studentId)}</span>
+        <button id="auth-logout-btn" style="display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:10px;border:1.5px solid rgba(180,130,70,0.2);background:#fff;color:#c4943a;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;">Log out</button>`;
+      const lb = document.getElementById('auth-logout-btn');
+      if (lb) lb.onclick = logout;
+    } else {
+      bar.innerHTML = '';
+    }
   }
+  // 旧容器兼容（登录门内不需要）
+  const box = document.getElementById('auth-box');
+  if (box) box.innerHTML = '';
 }
 
 // === 云同步 ===
