@@ -346,7 +346,7 @@ function renderMistakesView() {
       </div>
       <p style="font-size:.8rem;color:#78716c;margin:0 0 6px;font-weight:700;">Number of questions (weighted by wrong count)</p>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input id="mistakes-paper-count" type="number" min="5" max="50" value="10" style="width:80px;padding:8px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;font-weight:700;text-align:center;">
+        <input id="mistakes-paper-count" type="number" min="1" max="50" value="10" style="width:80px;padding:8px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;font-weight:700;text-align:center;">
         <button id="mistakes-paper-go" style="flex:1;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Start Paper</button>
       </div>
     </div>
@@ -403,11 +403,27 @@ function renderMistakesView() {
 }
 
 // === 错题组卷：错误次数越多越可能被抽中 ===
+// 按题目路径从题库反查正确答案（云端同步/历史记录可能丢失答案）
+function igLookupAnswer(qPath) {
+  try {
+    const parts = String(qPath || '').split('/');
+    const chId = parts[0];
+    const m = (parts[1] || '').match(/^q(\d+)\.jpg$/);
+    if (!m) return '?';
+    const ch = (typeof QUESTION_CHAPTERS !== 'undefined') ? QUESTION_CHAPTERS.find(c => c.id === chId) : null;
+    if (ch && ch.answers) {
+      const a = ch.answers[parseInt(m[1]) - 1];
+      if (a && a.a) return a.a;
+    }
+  } catch (e) {}
+  return '?';
+}
+
 function mistakesStartPaper(items) {
   if (!items || !items.length) return;
-  const count = Math.max(5, Math.min(50, parseInt($('mistakes-paper-count').value) || 10));
+  const count = Math.max(1, Math.min(50, parseInt($('mistakes-paper-count').value) || 10));
   // 加权抽样（不放回）：weight = 错误次数
-  const pool = items.map(it => ({ q: it.question, a: it.answer || '?', img: it.img !== false, chapter: (it.question || '').split('/')[0], w: Math.max(1, it.count || 1) }));
+  const pool = items.map(it => ({ q: it.question, a: (it.answer && it.answer !== '?') ? it.answer : igLookupAnswer(it.question), img: it.img !== false, chapter: (it.question || '').split('/')[0], w: Math.max(1, it.count || 1) }));
   const picked = [];
   const remaining = pool.slice();
   while (picked.length < count && remaining.length > 0) {
@@ -418,7 +434,7 @@ function mistakesStartPaper(items) {
       if (r <= 0) { picked.push(remaining[i]); remaining.splice(i, 1); break; }
     }
   }
-  if (picked.length < 5) { alert('Not enough wrong questions (need at least 5).'); return; }
+  if (picked.length < 1) { alert('No wrong questions available.'); return; }
   // 启动做题（与主页 quiz 相同引擎，paper 标记在 index.html 全局）
   if (typeof startPaperQuiz === 'function') startPaperQuiz(picked);
 }

@@ -223,7 +223,8 @@ async function syncCloudToLocal() {
     const merged = local.slice();
     for (const r of cloudWrong) {
       if (localSet.has(r.q_path)) continue;
-      merged.push({ question: r.q_path, img: true, questionIndex: null, answer: '?', timestamp: Date.parse(r.answered_at) || Date.now() });
+      const ans = (typeof igLookupAnswer === 'function') ? igLookupAnswer(r.q_path) : '?';
+      merged.push({ question: r.q_path, img: true, questionIndex: null, answer: ans, timestamp: Date.parse(r.answered_at) || Date.now() });
     }
     if (typeof saveWrongBook === 'function') saveWrongBook(merged);
     window.igAnsweredSet = new Set(Object.keys(latest));
