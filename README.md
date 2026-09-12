@@ -64,7 +64,14 @@ Browser (static SPA, zero build step)
 
 - **No build tooling**: plain HTML/JS/CSS — `pk.js`, `auth.js`, `app.js` layered on the original single-file quiz engine
 - **China access**: custom domain + Worker relay means students need no VPN
-- **Data safety (4 layers)**: column-level grants hide password hashes; login via `SECURITY DEFINER` RPC with 0.3s anti-brute-force delay; answers/PK records are insert+select only (no client-side edits or deletes); input constraints on every table
+- **Data safety (hardened, in depth)**:
+  - Column-level grants: password hashes are never readable by the client
+  - Login / password change / account deletion via `SECURITY DEFINER` RPCs with server-side verification and 0.3s anti-brute-force delay
+  - Records are insert+select only (RLS) — no client-side edits or deletes
+  - Salted password hashing (per-user salt), validated student-ID format everywhere (session tampering safe)
+  - DB constraints on every table: student ID `^[0-9]{8}$`, question path format, score ranges, payload length caps, preferred-name XSS character block
+  - Frontend: URL-encoded query params, room-code whitelist `[A-Z0-9]{4}`, PK score sanity caps, question-path regex validation before any cloud write
+  - Cloudflare Worker relay only forwards `/rest/v1` and `/auth/v1` paths (everything else 404)
 
 ## Pages
 

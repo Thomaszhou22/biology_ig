@@ -10,6 +10,8 @@ const SB_TABLE_USERS = 'ig_users';
 const SB_TABLE_ANSWERS = 'ig_answers';
 
 let currentUser = null;
+// 安全校验：学号必须 8 位数字（sessionStorage 可被篡改，使用前强制验证）
+function validSid(sid) { return typeof sid === 'string' && /^\d{8}$/.test(sid); }
 try {
   const s = sessionStorage.getItem('ig-auth-user');
   if (s) currentUser = JSON.parse(s);
@@ -118,7 +120,8 @@ async function doGateAuth() {
   msg.textContent = 'Please wait…';
   try {
     const hash = await passHash(sid, pass);
-    const users = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${sid}&select=student_id`);
+    if (!validSid(sid)) { msg.style.color = '#ef4444'; msg.textContent = 'Invalid student ID'; return; }
+    const users = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${encodeURIComponent(sid)}&select=student_id`);
     if (gateMode === 'signup') {
       if (users && users.length) { msg.style.color = '#ef4444'; msg.textContent = 'This student ID is already registered — sign in instead'; return; }
       await sbFetch(`/rest/v1/${SB_TABLE_USERS}`, { method: 'POST', body: JSON.stringify({ student_id: sid, pass_hash: hash }) });
@@ -196,7 +199,9 @@ function renderAuthUI() {
 
 // === 云同步 ===
 async function recordAnswerCloud(qItem, correct) {
-  if (!currentUser || !qItem) return;
+  if (!currentUser || !validSid(currentUser.studentId) || !qItem) return;
+  // q_path 格式校验（与 DB 约束一致）：chX_name/qNN.jpg
+  if (!/^ch[0-9]+_[a-z_]+\/q[0-9]{2}\.jpg$/.test(String(qItem.q || ''))) return;
   try {
     await sbFetch(`/rest/v1/${SB_TABLE_ANSWERS}`, {
       method: 'POST',
@@ -213,7 +218,8 @@ async function recordAnswerCloud(qItem, correct) {
 async function syncCloudToLocal() {
   if (!currentUser) return;
   try {
-    const rows = await sbFetch(`/rest/v1/${SB_TABLE_ANSWERS}?student_id=eq.${currentUser.studentId}&select=q_path,chapter,correct,answered_at&order=answered_at.desc&limit=10000`);
+    if (!validSid(currentUser.studentId)) { currentUser = null; sessionStorage.removeItem('ig-auth-user'); return; }
+    const rows = await sbFetch(`/rest/v1/${SB_TABLE_ANSWERS}?student_id=eq.${encodeURIComponent(currentUser.studentId)}&select=q_path,chapter,correct,answered_at&order=answered_at.desc&limit=10000`);
     if (!rows || !rows.length) return;
     const latest = {};
     for (const r of rows) if (!latest[r.q_path]) latest[r.q_path] = r;
@@ -288,7 +294,8 @@ if (document.readyState !== 'loading') authInit();
 async function loadMyPreferredName() {
   if (!currentUser) return null;
   try {
-    const rows = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${currentUser.studentId}&select=preferred_name`);
+    if (!validSid(currentUser.studentId)) return null;
+    const rows = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${encodeURIComponent(currentUser.studentId)}&select=preferred_name`);
     return (rows && rows.length && rows[0].preferred_name) || null;
   } catch (e) { return null; }
 }
@@ -297,7 +304,8 @@ async function savePreferredName(name) {
   if (!currentUser) return false;
   const v = String(name || '').trim().slice(0, 20);
   try {
-    await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${currentUser.studentId}`,
+    if (!validSid(currentUser.studentId)) return false;
+    await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${encodeURIComponent(currentUser.studentId)}`,
       { method: 'PATCH', body: JSON.stringify({ preferred_name: v || null }) });
     return true;
   } catch (e) { return false; }

@@ -298,9 +298,9 @@ async function pkOnOpponentFled() {
   addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: 'win', fled: true, opp: oppNameF });
   // 云端上报（PK 排行榜）：逃跑判负场景留守方记一胜
   const meU = (typeof igCurrentUser === 'function') && igCurrentUser();
-  if (meU) {
+  if (meU && /^\d{8}$/.test(meU.studentId) && Number.isFinite(myScore) && myScore >= 0 && myScore <= s.qCount * 1500 + 100) {
     pkApi('/rest/v1/pk_results', { method: 'POST', body: JSON.stringify({
-      student_id: meU.studentId, code: s.code, my_score: myScore, opp_score: oppScore, result: 'win'
+      student_id: meU.studentId, code: s.code, my_score: Math.round(myScore), opp_score: Math.round(oppScore), result: 'win'
     })}).catch(() => {});
   }
   if (typeof commitSessionRecords === 'function') commitSessionRecords();
@@ -516,9 +516,9 @@ async function pkFinish(room) {
       if (names[oppSid]) oppName = names[oppSid];
     } catch (e) {}
   }
-  if (meU) {
+  if (meU && /^\d{8}$/.test(meU.studentId) && Number.isFinite(myScore) && myScore >= 0 && myScore <= s.qCount * 1500 + 100) {
     pkApi('/rest/v1/pk_results', { method: 'POST', body: JSON.stringify({
-      student_id: meU.studentId, code: s.code, my_score: myScore, opp_score: oppScore, result: myResult
+      student_id: meU.studentId, code: s.code, my_score: Math.round(myScore), opp_score: Math.round(oppScore), result: myResult
     })}).catch(() => {});
   }
   // 房间保留 60 秒再删：让后完成的一方也能轮询到终局数据拿到结算
