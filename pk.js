@@ -346,14 +346,17 @@ async function pkOnRoom(room) {
     return;
   }
 
-  // 逃跑检测：对手心跳超过 10 秒没更新 = 逃跑（对局中都适用）
-  const oppSeenField = s.role === 'host' ? 'guest_seen' : 'host_seen';
-  const oppSeen = room[oppSeenField] ? Date.parse(room[oppSeenField]) : Date.parse(room.created_at || '');
-  if (Date.now() - oppSeen > 10000 && room.status !== 'finished') {
-    // 对手跑了：清理房间并收通知（不记胜负）
-    try { await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'DELETE' }); } catch (e) {}
-    pkOnOpponentFled();
-    return;
+  // 逃跑检测：仅在对手确实已加入且开局后才启用（waiting 阶段 guest 未进房，心跳为空是正常的）
+  const opponentJoined = s.role === 'host' ? !!room.guest_id : true;
+  if (opponentJoined && room.status !== 'waiting' && room.status !== 'finished') {
+    const oppSeenField = s.role === 'host' ? 'guest_seen' : 'host_seen';
+    const oppSeen = room[oppSeenField] ? Date.parse(room[oppSeenField]) : 0;
+    if (oppSeen && Date.now() - oppSeen > 10000) {
+      // 对手跑了：清理房间，留守方判胜
+      try { await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'DELETE' }); } catch (e) {}
+      pkOnOpponentFled();
+      return;
+    }
   }
 
   // 对手进度更新
