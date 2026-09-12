@@ -98,10 +98,14 @@ async function pkTryResume() {
 
 // ============ PK 云端排行榜 ============
 async function loadPKLeaderboard() {
+  // 已注册用户全部上榜（无 PK 记录显示 0）
+  const users = await pkApi('/rest/v1/ig_users?select=student_id&limit=1000');
   const rows = await pkApi('/rest/v1/pk_results?select=student_id,result&limit=10000');
-  if (!rows || !rows.length) return [];
   const agg = new Map();
-  for (const r of rows) {
+  for (const u of users || []) {
+    agg.set(u.student_id, { student_id: u.student_id, wins: 0, losses: 0, ties: 0, total: 0 });
+  }
+  for (const r of rows || []) {
     if (!agg.has(r.student_id)) agg.set(r.student_id, { student_id: r.student_id, wins: 0, losses: 0, ties: 0, total: 0 });
     const a = agg.get(r.student_id);
     a.total++;
@@ -109,7 +113,7 @@ async function loadPKLeaderboard() {
     else if (r.result === 'loss') a.losses++;
     else a.ties++;
   }
-  return [...agg.values()].sort((a, b) => b.wins - a.wins || (b.wins / b.total) - (a.wins / a.total));
+  return [...agg.values()].sort((a, b) => b.wins - a.wins || (b.wins / (b.total || 1)) - (a.wins / (a.total || 1)));
 }
 
 // ============ 房间码 ============
