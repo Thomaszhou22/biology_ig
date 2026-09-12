@@ -10,7 +10,7 @@
 <script>
 // 站点根路径：在子路由页（/mock-exam 等）上相对路径会 404，全部素材用绝对路径
 (function () {
-  var routes = ['/mock-exam', '/mistakes', '/leaderboard', '/ai-analysis'];
+  var routes = ['/mock-exam', '/mistakes', '/leaderboard', '/ai-analysis', '/pk'];
   var base = location.pathname.replace(/\/index\.html?$/, '');
   var again = true;
   while (again) {
@@ -1791,6 +1791,7 @@ document.getElementById('mock-timer-hide').onclick = toggleMockTimer;
 
 </script>
 <script src="auth.js"></script>
+<script src="pk.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

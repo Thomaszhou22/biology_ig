@@ -10,6 +10,7 @@ const ICONS = {
   book: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
   trophy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
   sparkles: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>',
+  swords: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></svg>',
   quiz: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>',
   logout: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
   x: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
@@ -22,14 +23,15 @@ const PAGES = [
   { id: 'mock', label: 'Mock Exam', icon: 'clock' },
   { id: 'mistakes', label: 'Mistake Collection', icon: 'book' },
   { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy' },
-  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' }
+  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' },
+  { id: 'pk', label: '1v1 PK', icon: 'swords' }
 ];
 
 let currentPage = 'home';
 let infoPanelHome = null; // #info-panel 的原始父容器
 
 // === URL 路由（真分页：/leaderboard 等）===
-const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', leaderboard: '/leaderboard', ai: '/ai-analysis' };
+const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', leaderboard: '/leaderboard', ai: '/ai-analysis', pk: '/pk' };
 // 站点根：剥掉 index.html 与任何已知路由后缀（/mock-exam/leaderboard 这类嵌套也剥干净）
 let BASE = location.pathname.replace(/\/index\.html?$/, '');
 let _again = true;
@@ -130,7 +132,10 @@ function buildShell() {
     d.querySelector('[data-back]').onclick = () => navigate('home');
     return d;
   };
-  mk('mock'); mk('mistakes'); mk('leaderboard'); mk('ai');
+  mk('mock'); mk('mistakes'); mk('leaderboard'); mk('ai'); mk('pk');
+  // PK 页去掉关闭叉（完整页面）
+  const pkClose = document.querySelector('#view-pk .view-close');
+  if (pkClose) pkClose.remove();
   // Mock Exam 是独立完整页面：去掉右上角叉
   const mockClose = document.querySelector('#view-mock .view-close');
   if (mockClose) mockClose.remove();
@@ -227,6 +232,7 @@ function navigate(page, push) {
     if (page === 'mistakes') renderMistakesView();
     if (page === 'leaderboard') renderLeaderboardView();
     if (page === 'ai') renderAiView();
+    if (page === 'pk' && typeof renderPKView === 'function') renderPKView();
     if (page === 'mock') renderMockView();
   }
 }
