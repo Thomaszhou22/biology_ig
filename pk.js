@@ -280,12 +280,22 @@ async function pkJoinRoom() {
 }
 
 // 对手逃跑：逃跑方判负，留守方判胜并正常结算进战绩
-function pkOnOpponentFled() {
+async function pkOnOpponentFled() {
   if (!pkState || pkState.status === 'finished') return;
   const s = pkState;
   // 留守方判胜（对手弃权）
   const myScore = s.myScore, oppScore = s.oppScore;
-  addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: 'win', fled: true });
+  // 对手名（逃跑方）
+  let oppNameF = 'Opponent';
+  const oppSidF = s.oppStudentId && String(s.oppStudentId).startsWith('sid_') ? s.oppStudentId.slice(4) : null;
+  if (oppSidF) {
+    oppNameF = oppSidF;
+    try {
+      const namesF = (typeof igPrefetchNames === 'function') ? await igPrefetchNames([oppSidF]) : {};
+      if (namesF[oppSidF]) oppNameF = namesF[oppSidF];
+    } catch (e) {}
+  }
+  addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: 'win', fled: true, opp: oppNameF });
   // 云端上报（PK 排行榜）：逃跑判负场景留守方记一胜
   const meU = (typeof igCurrentUser === 'function') && igCurrentUser();
   if (meU) {
@@ -493,9 +503,19 @@ async function pkFinish(room) {
   const win = myScore > oppScore, tie = myScore === oppScore;
   // 历史记录
   const myResult = win ? 'win' : tie ? 'tie' : 'loss';
-  addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: myResult });
+  addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: myResult, opp: oppName });
   // 云端上报（PK 排行榜数据源）；失败静默（本地历史仍有效）
   const meU = (typeof igCurrentUser === 'function') && igCurrentUser();
+  // 对手显示名：preferred name 优先，无则用对手玩家 id（学号）截短
+  let oppName = 'Opponent';
+  const oppSid = s.oppStudentId && String(s.oppStudentId).startsWith('sid_') ? s.oppStudentId.slice(4) : null;
+  if (oppSid) {
+    oppName = oppSid;
+    try {
+      const names = (typeof igPrefetchNames === 'function') ? await igPrefetchNames([oppSid]) : {};
+      if (names[oppSid]) oppName = names[oppSid];
+    } catch (e) {}
+  }
   if (meU) {
     pkApi('/rest/v1/pk_results', { method: 'POST', body: JSON.stringify({
       student_id: meU.studentId, code: s.code, my_score: myScore, opp_score: oppScore, result: myResult
@@ -540,7 +560,7 @@ function pkShowHistory() {
       <h3 style="margin:0 0 14px;text-align:center;font-weight:800;color:#1e293b;">🏆 PK History</h3>
       ${h.length ? h.map(e => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid #f0ebe0;border-radius:12px;margin-bottom:8px;">
-          <div style="font-size:.8rem;color:#78716c;">${new Date(e.date).toLocaleDateString()} <span style="color:#a8a29e;">#${pkEscape(e.code)}</span></div>
+          <div style="font-size:.8rem;color:#78716c;">${new Date(e.date).toLocaleDateString()} <span style="color:#a8a29e;">#${pkEscape(e.code)}</span> · vs <b style="color:#475569;">${pkEscape(e.opp || 'Opponent')}</b>${e.fled ? ' <span style="font-size:.68rem;color:#d97706;">(left early)</span>' : ''}</div>
           <div style="font-weight:800;font-size:.9rem;color:${e.result === 'win' ? '#10b981' : e.result === 'tie' ? '#d97706' : '#ef4444'};">${e.result === 'win' ? 'WIN' : e.result === 'tie' ? 'DRAW' : 'LOSS'} ${e.myScore}–${e.oppScore}</div>
         </div>`).join('') : '<p style="text-align:center;color:#a8a29e;font-weight:600;">No PK history yet.</p>'}
       <button onclick="document.getElementById('pk-history-modal').remove()" style="width:100%;padding:10px;margin-top:6px;border:2px solid rgba(180,130,70,.12);border-radius:12px;background:none;color:#c4943a;font-weight:700;cursor:pointer;font-family:inherit;">Close</button>
