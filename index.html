@@ -77,8 +77,8 @@ body > * { position: relative; z-index: 1; }
   #mock-grid.open-mobile { transform: translate(0, -50%); }
   #mock-grid.mobile-shown { display: block; }
   #mock-grid-toggle {
-    position: fixed; right: 0; top: 50%; transform: translateY(-50%);
-    width: 30px; height: 64px; border: 1px solid #ece4d4; border-right: none;
+    position: fixed; right: 0; top: 66px; /* 顶栏下方，避开题目区 */
+    width: 30px; height: 52px; border: 1px solid #ece4d4; border-right: none;
     border-radius: 10px 0 0 10px; background: #faf6ee; color: #6366f1;
     font-size: 15px; cursor: pointer; z-index: 4650; display: flex;
     align-items: center; justify-content: center; box-shadow: -2px 0 8px rgba(0,0,0,.08);

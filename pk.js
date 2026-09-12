@@ -96,6 +96,22 @@ async function pkTryResume() {
   } catch (e) {}
 }
 
+// ============ PK 云端排行榜 ============
+async function loadPKLeaderboard() {
+  const rows = await pkApi('/rest/v1/pk_results?select=student_id,result&limit=10000');
+  if (!rows || !rows.length) return [];
+  const agg = new Map();
+  for (const r of rows) {
+    if (!agg.has(r.student_id)) agg.set(r.student_id, { student_id: r.student_id, wins: 0, losses: 0, ties: 0, total: 0 });
+    const a = agg.get(r.student_id);
+    a.total++;
+    if (r.result === 'win') a.wins++;
+    else if (r.result === 'loss') a.losses++;
+    else a.ties++;
+  }
+  return [...agg.values()].sort((a, b) => b.wins - a.wins || (b.wins / b.total) - (a.wins / a.total));
+}
+
 // ============ 房间码 ============
 function pkGenCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -387,7 +403,15 @@ async function pkFinish(room) {
   pkClearSession(); // 对局结束，清会话存档
   const win = myScore > oppScore, tie = myScore === oppScore;
   // 历史记录
-  addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: win ? 'win' : tie ? 'tie' : 'loss' });
+  const myResult = win ? 'win' : tie ? 'tie' : 'loss';
+  addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: myResult });
+  // 云端上报（PK 排行榜数据源）；失败静默（本地历史仍有效）
+  const meU = (typeof igCurrentUser === 'function') && igCurrentUser();
+  if (meU) {
+    pkApi('/rest/v1/pk_results', { method: 'POST', body: JSON.stringify({
+      student_id: meU.studentId, code: s.code, my_score: myScore, opp_score: oppScore, result: myResult
+    })}).catch(() => {});
+  }
   // 清理房间（双方都看到结果后延迟删；此处由先到者删）
   try { await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'DELETE' }); } catch (e) {}
 

@@ -419,14 +419,58 @@ function mistakesStartPaper(items) {
 }
 
 // === Leaderboard 页 ===
-async function renderLeaderboardView() {
+async function renderLeaderboardView(tab) {
+  tab = tab || (renderLeaderboardView._tab || 'quiz');
+  renderLeaderboardView._tab = tab;
   $('view-leaderboard-title').innerHTML = ICONS.trophy + ' Leaderboard';
   const body = $('view-leaderboard-body');
-  body.innerHTML = `<p class="page-empty">Loading…</p>`;
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button id="lb-tab-quiz" class="topbar-btn" style="flex:1;${tab === 'quiz' ? 'background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;' : 'background:#fff;border:1.5px solid rgba(180,130,70,.15);color:#c4943a;'}">Quiz</button>
+      <button id="lb-tab-pk" class="topbar-btn" style="flex:1;${tab === 'pk' ? 'background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;' : 'background:#fff;border:1.5px solid rgba(99,102,241,.2);color:#6366f1;'}">1v1 PK</button>
+    </div>
+    <div id="lb-body-inner"></div>
+    <div id="lb-quiz-body"></div>`;
+  $('lb-tab-quiz').onclick = () => renderLeaderboardView('quiz');
+  $('lb-tab-pk').onclick = () => renderLeaderboardView('pk');
+  const inner = $('lb-body-inner');
+
+  if (tab === 'pk') {
+    inner.innerHTML = `<p class="page-empty">Loading…</p>`;
+    try {
+      const data = (typeof loadPKLeaderboard === 'function') ? await loadPKLeaderboard() : [];
+      if (!data.length) { inner.innerHTML = `<p class="page-empty">No PK records yet — challenge someone!</p>`; return; }
+      const me = (typeof igCurrentUser === 'function') && igCurrentUser();
+      const medalIcon = i => i === 1 ? '🥇' : i === 2 ? '🥈' : i === 3 ? '🥉' : i;
+      const medalCls = i => i === 1 ? 'medal-gold' : i === 2 ? 'medal-silver' : i === 3 ? 'medal-bronze' : '';
+      inner.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.92rem;">
+        <thead><tr style="border-bottom:2px solid #ece4d4;color:#a8a29e;font-size:.78rem;">
+          <th style="padding:10px 8px;text-align:center;">Rank</th>
+          <th style="padding:10px 8px;text-align:left;">Student ID</th>
+          <th style="padding:10px 8px;text-align:right;">Wins</th>
+          <th style="padding:10px 8px;text-align:right;">W/L/T</th>
+        </tr></thead>
+        <tbody>
+        ${data.map((row, i) => `
+          <tr class="${medalCls(i + 1)}" style="${me && row.student_id === me.studentId && i + 1 > 3 ? 'outline:2px solid rgba(99,102,241,.4);outline-offset:-2px;font-weight:800;' : ''}">
+            <td style="padding:12px 8px;text-align:center;font-weight:800;">${medalIcon(i + 1)}</td>
+            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${escapeHtml(row.student_id)}</td>
+            <td style="padding:12px 8px;text-align:right;font-weight:800;color:#6366f1;">${row.wins}</td>
+            <td style="padding:12px 8px;text-align:right;color:#a8a29e;font-weight:600;">${row.wins}/${row.losses}/${row.ties}</td>
+          </tr>`).join('')}
+        </tbody></table>`;
+    } catch (e) {
+      inner.innerHTML = `<p class="page-empty" style="color:#ef4444;">Failed to load: ${escapeHtml(e.message || 'network error')}</p>`;
+    }
+    return;
+  }
+
+  // ===== Quiz 榜（渲染到独立容器，不覆盖 Tab）=====
+  const qb = $('lb-quiz-body');
   try {
     let data = (typeof loadLeaderboardRows === 'function') ? await loadLeaderboardRows() : null;
     if (!data || !data.length) {
-      body.innerHTML = `<p class="page-empty">No records yet — go answer some questions!</p>`;
+      qb.innerHTML = `<p class="page-empty">No records yet — go answer some questions!</p>`;
       return;
     }
     // 排序：正确题数（题数×正确率，隐性计算，不显示该列）优先，其次正确率
@@ -438,7 +482,7 @@ async function renderLeaderboardView() {
     const myRank = me ? data.findIndex(r => r.student_id === me.studentId) + 1 : 0;
     const medal = i => i === 1 ? 'medal-gold' : i === 2 ? 'medal-silver' : i === 3 ? 'medal-bronze' : '';
     const medalIcon = i => i === 1 ? '🥇' : i === 2 ? '🥈' : i === 3 ? '🥉' : i;
-    body.innerHTML = `
+    qb.innerHTML = `
       ${myRank ? `
       <div style="background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(217,119,6,.06));border:1.5px solid rgba(245,158,11,.3);border-radius:18px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;">
         <div style="font-size:1.6rem;font-weight:800;color:#92400e;">#${myRank}</div>
@@ -463,7 +507,7 @@ async function renderLeaderboardView() {
         </tbody>
       </table>`;
   } catch (e) {
-    body.innerHTML = `<p class="page-empty" style="color:#ef4444;">Failed to load: ${escapeHtml(e.message || 'network error')}</p>`;
+    qb.innerHTML = `<p class="page-empty" style="color:#ef4444;">Failed to load: ${escapeHtml(e.message || 'network error')}</p>`;
   }
 }
 
