@@ -101,7 +101,7 @@ function buildShell() {
   // 开考：隐藏 Quiz 落地页
   window.addEventListener('quiz-started', () => {
     const landing = $('quiz-landing');
-    if (landing) landing.style.display = 'none';
+    if (landing) landing.classList.remove('show');
   });
   // 章节弹窗取消：未开考回落地页
   const backBtn = document.getElementById('back-to-names-btn');
@@ -110,7 +110,7 @@ function buildShell() {
       setTimeout(() => {
         if (!deepQuestionsActive()) {
           const landing = $('quiz-landing');
-          if (landing) landing.style.display = '';
+          if (landing) landing.classList.add('show');
         }
       }, 50);
     });
@@ -260,6 +260,9 @@ function navigate(page, push) {
     const v = $('view-' + p.id);
     if (v) v.classList.toggle('show', p.id === page);
   });
+  // Quiz 落地页只在主页且未开考时显示（它不是 PAGES 成员，手动管理）
+  const ql = $('quiz-landing');
+  if (ql) ql.classList.toggle('show', page === 'home' && !deepQuestionsActive());
 
   if (page === 'home') {
     // Quiz 落地页：与 Mock 落地页同款（Start Quiz → 章节选择弹窗）；做题中才显示题目面板
@@ -303,7 +306,7 @@ function renderQuizLanding() {
   if (!landing) {
     landing = document.createElement('div');
     landing.id = 'quiz-landing';
-    landing.className = 'view-page show';
+    landing.className = 'view-page';
     landing.innerHTML = `
       <div class="view-card">
         <div class="view-head" style="margin-bottom:14px;">
@@ -314,13 +317,12 @@ function renderQuizLanding() {
       </div>`;
     document.body.appendChild(landing);
     $('quiz-start-btn').onclick = () => {
-      landing.style.display = 'none';
+      landing.classList.remove('show');
       const panel = $('info-panel');
       if (panel) panel.style.display = '';
       if (typeof openChapterModal === 'function') openChapterModal();
     };
   }
-  landing.style.display = '';
   const panel = $('info-panel');
   if (panel) panel.style.display = 'none';
 }
