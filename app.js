@@ -95,6 +95,11 @@ function buildShell() {
     return d;
   };
   mk('mock'); mk('mistakes'); mk('leaderboard'); mk('ai');
+  // Mock Exam 是独立完整页面：去掉右上角叉
+  const mockClose = document.querySelector('#view-mock .view-close');
+  if (mockClose) mockClose.remove();
+  const mockHead = document.querySelector('#view-mock .view-head');
+  if (mockHead) mockHead.style.marginBottom = '14px';
 
   injectStyles();
 }
@@ -183,6 +188,12 @@ function renderMockView() {
       <div id="mock-page-quiz"></div>`;
     $('mock-start-btn').onclick = () => {
       if (typeof startMockExam === 'function') startMockExam();
+      // 开始后：题目面板直接进入本页，隐藏开始按钮，无需再点任何东西
+      const host = $('mock-page-quiz');
+      const panel = $('info-panel');
+      if (panel && host && panel.parentElement !== host) host.appendChild(panel);
+      const btn = $('mock-start-btn');
+      if (btn) btn.style.display = 'none';
     };
   }
   // 若考试进行中，把题目面板移进来
