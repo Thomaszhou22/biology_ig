@@ -259,20 +259,32 @@ async function pkJoinRoom() {
   } catch (e) { alert('Join failed: ' + e.message); }
 }
 
-// 对手逃跑：房间作废，通知本方
+// 对手逃跑：逃跑方判负，留守方判胜并正常结算进战绩
 function pkOnOpponentFled() {
   if (!pkState || pkState.status === 'finished') return;
+  const s = pkState;
+  // 留守方判胜（对手弃权）
+  const myScore = s.myScore, oppScore = s.oppScore;
+  addPKHistory({ date: new Date().toISOString(), code: s.code, myScore, oppScore, result: 'win', fled: true });
+  // 云端上报（PK 排行榜）：逃跑判负场景留守方记一胜
+  const meU = (typeof igCurrentUser === 'function') && igCurrentUser();
+  if (meU) {
+    pkApi('/rest/v1/pk_results', { method: 'POST', body: JSON.stringify({
+      student_id: meU.studentId, code: s.code, my_score: myScore, opp_score: oppScore, result: 'win'
+    })}).catch(() => {});
+  }
+  if (typeof commitSessionRecords === 'function') commitSessionRecords();
   pkClearSession();
-  if (pkState.pollTimer) clearTimeout(pkState.pollTimer);
+  if (s.pollTimer) clearTimeout(s.pollTimer);
   pkState = null;
   const game = document.getElementById('pk-game');
   if (game) game.style.display = 'none';
   const result = document.getElementById('pk-result');
   result.style.display = 'block';
   result.innerHTML = `
-    <div style="font-size:3rem;margin-bottom:6px;">🚪</div>
-    <h2 style="margin:0 0 4px;font-size:1.4rem;color:#1e293b;">Opponent Left</h2>
-    <p style="font-size:.95rem;font-weight:700;color:#78716c;margin:0 0 16px;">Your opponent disconnected — this duel is void.</p>
+    <div style="font-size:3rem;margin-bottom:6px;">🏆</div>
+    <h2 style="margin:0 0 4px;font-size:1.4rem;color:#1e293b;">Victory (Walkover)</h2>
+    <p style="font-size:.95rem;font-weight:700;color:#78716c;margin:0 0 16px;">Your opponent left the duel — you win by forfeit.</p>
     <button id="pk-fled-back-btn" style="padding:12px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Back to Lobby</button>`;
   document.getElementById('pk-fled-back-btn').onclick = () => {
     result.style.display = 'none';
@@ -290,7 +302,7 @@ function pkPoll() {
       const rows = await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${pkState.code}&select=*`);
       if (rows && rows.length) await pkOnRoom(rows[0]);
       else if (pkState && pkState.status !== 'finished' && !pkState.myDone) {
-        // 房间消失且自己没完成 = 对方逃跑/房间被删 —— 收到通知
+        // 房间消失且自己没完成 = 对方逃跑（我方判胜）
         pkOnOpponentFled();
       }
       // 心跳：告诉对方我还在线
