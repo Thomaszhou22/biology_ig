@@ -195,7 +195,7 @@ function injectStyles() {
 .drawer-foot { padding:14px 16px; border-top:1px solid #ece4d4; font-size:0.8rem; color:#78716c; font-weight:700; display:flex; align-items:center; gap:8px; }
 .view-page { position:fixed; inset:0; z-index:5000; background:radial-gradient(ellipse at top, rgba(245,158,11,0.06) 0%, transparent 60%), #f5f0e8; display:none; overflow-y:auto; padding:76px 16px 32px; box-sizing:border-box; }
 .view-page.show { display:block; }
-.view-card { background:#faf6ee; border:1px solid #ece4d4; border-radius:24px; box-shadow:0 1px 3px rgba(0,0,0,.06), 0 12px 40px rgba(0,0,0,.08); max-width:760px; margin:0 auto; padding:26px 28px; }
+.view-card { background:#faf6ee; border:1px solid #ece4d4; border-radius:24px; box-shadow:0 1px 3px rgba(0,0,0,.06), 0 12px 40px rgba(0,0,0,.08); max-width:760px; margin:0 auto; padding:26px 28px; font-size:.95rem; }
 .view-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
 .view-head h2 { margin:0; font-size:1.3rem; font-weight:800; color:#1e293b; letter-spacing:-.3px; display:flex; align-items:center; gap:10px; }
 .view-close { display:flex; align-items:center; justify-content:center; width:38px; height:38px; border:none; border-radius:12px; background:none; color:#a8a29e; cursor:pointer; }
@@ -206,7 +206,7 @@ function injectStyles() {
 .medal-bronze { background:linear-gradient(135deg,#fed7aa,#fdba74) !important; color:#9a3412 !important; }
 .mistake-item { border:1px solid #ece4d4; border-radius:16px; padding:14px 16px; margin-bottom:10px; background:#fff; }
 .mistake-item img { max-width:220px; border-radius:8px; cursor:zoom-in; }
-.view-action-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; border:none; border-radius:14px; background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; font-family:inherit; font-weight:800; font-size:14px; cursor:pointer; }
+.view-action-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:15px; border:none; border-radius:14px; background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; font-family:inherit; font-weight:700; font-size:15px; cursor:pointer; letter-spacing:.3px; }
 .view-action-btn.purple { background:linear-gradient(135deg,#7c3aed,#6d28d9); }
 .view-action-btn:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(245,158,11,.3); transition:all .2s; }
 .page-empty { text-align:center; color:#a8a29e; font-weight:600; padding:28px 0; }
@@ -269,7 +269,7 @@ function renderMockView() {
   if (!body.dataset.built) {
     body.dataset.built = '1';
     body.innerHTML = `
-      <p style="color:#78716c;font-size:.92rem;margin:0 0 16px;">A 45-minute mock exam with 40 questions. Wrong questions are weighted to appear more often. Your timer runs in the top bar area while active.</p>
+      <p style="color:#78716c;margin:0 0 16px;">A 45-minute mock exam with 40 questions. Wrong questions are weighted to appear more often. Your timer runs in the top bar area while active.</p>
       <button class="view-action-btn purple" id="mock-start-btn">${ICONS.play}<span>Start Mock Exam</span></button>
       <div id="mock-page-quiz"></div>`;
     $('mock-start-btn').onclick = () => {
@@ -444,7 +444,7 @@ async function renderLeaderboardView(tab) {
       const names = (typeof igPrefetchNames === 'function') ? await igPrefetchNames(data.map(r => r.student_id)) : {};
       const medalIcon = i => i === 1 ? '🥇' : i === 2 ? '🥈' : i === 3 ? '🥉' : i;
       const medalCls = i => i === 1 ? 'medal-gold' : i === 2 ? 'medal-silver' : i === 3 ? 'medal-bronze' : '';
-      inner.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.92rem;">
+      inner.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.95rem;">
         <thead><tr style="border-bottom:2px solid #ece4d4;color:#a8a29e;font-size:.78rem;">
           <th style="padding:10px 8px;text-align:center;">Rank</th>
           <th style="padding:10px 8px;text-align:left;">Student ID</th>
@@ -492,7 +492,7 @@ async function renderLeaderboardView(tab) {
         <div style="flex:1;font-size:.88rem;color:#78716c;font-weight:600;">Your rank among ${data.length} student(s)<br>
           <span style="color:#334155;">${data[myRank - 1].unique_questions} questions · ${data[myRank - 1].accuracy}% accuracy</span></div>
       </div>` : ''}
-      <table style="width:100%;border-collapse:collapse;font-size:.92rem;">
+      <table style="width:100%;border-collapse:collapse;font-size:.95rem;">
         <thead><tr style="border-bottom:2px solid #ece4d4;color:#a8a29e;font-size:.78rem;">
           <th style="padding:10px 8px;text-align:center;">Rank</th>
           <th style="padding:10px 8px;text-align:left;">Student ID</th>
@@ -521,7 +521,7 @@ function renderAiView() {
   if (!body.dataset.built) {
     body.dataset.built = '1';
     body.innerHTML = `
-      <p style="color:#78716c;font-size:.92rem;margin:0 0 16px;">Configure your AI provider and API key first, then analyze your mistakes for weak points and study suggestions.</p>
+      <p style="color:#78716c;margin:0 0 16px;">Configure your AI provider and API key first, then analyze your mistakes for weak points and study suggestions.</p>
       <div id="ai-page-settings"></div>
       <button class="view-action-btn" id="ai-page-analyze" style="margin-top:14px;" disabled>Analyze My Mistakes</button>
       <div id="ai-page-status" style="font-size:.8rem;color:#78716c;font-weight:600;min-height:1.4em;margin-top:10px;text-align:center;"></div>
