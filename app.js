@@ -29,9 +29,20 @@ let infoPanelHome = null; // #info-panel 的原始父容器
 
 // === URL 路由（真分页：/leaderboard 等）===
 const ROUTES = { home: '', mock: '/mock-exam', mistakes: '/mistakes', leaderboard: '/leaderboard', ai: '/ai-analysis' };
-const BASE = location.pathname.replace(/\/index\.html?$/, '').replace(/\/$/, '');
+// 站点根：剥掉 index.html 与任何已知路由后缀（/mock-exam/leaderboard 这类嵌套也剥干净）
+let BASE = location.pathname.replace(/\/index\.html?$/, '');
+let _again = true;
+while (_again) {
+  _again = false;
+  for (const rt of Object.values(ROUTES)) {
+    if (rt && BASE.endsWith(rt)) { BASE = BASE.slice(0, -rt.length); _again = true; }
+  }
+}
+BASE = BASE.replace(/\/$/, '');
+// 素材绝对路径（在子路由页面上相对路径会 404）
+const ASSET_BASE = BASE + '/';
 function pageFromPath() {
-  const p = location.pathname.slice(BASE.length) || '/';
+  const p = (location.pathname.slice(BASE.length) || '/') ;
   for (const [page, route] of Object.entries(ROUTES)) {
     if (route && (p === route || p === route + '/')) return page;
   }
@@ -255,7 +266,7 @@ function renderMistakesView() {
           ${r.timestamp ? ' · ' + new Date(r.timestamp).toLocaleDateString() : ''}
         </div>
         <div>${r.img
-          ? `<img src="questions/${escapeHtml(r.question)}" onclick="zoomImage(this.src)" alt="question image">`
+          ? `<img src="${ASSET_BASE}questions/${escapeHtml(r.question)}" onclick="zoomImage(this.src)" alt="question image">`
           : `<div style="color:#1e293b;font-weight:600;">${escapeHtml(String(r.question || ''))}</div>`}
         </div>
       </div>`).join('')}`;

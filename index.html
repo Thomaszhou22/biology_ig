@@ -7,6 +7,21 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>IG Biology Quiz</title>
+<script>
+// 站点根路径：在子路由页（/mock-exam 等）上相对路径会 404，全部素材用绝对路径
+(function () {
+  var routes = ['/mock-exam', '/mistakes', '/leaderboard', '/ai-analysis'];
+  var base = location.pathname.replace(/\/index\.html?$/, '');
+  var again = true;
+  while (again) {
+    again = false;
+    for (var i = 0; i < routes.length; i++) {
+      if (base.endsWith(routes[i])) { base = base.slice(0, -routes[i].length); again = true; }
+    }
+  }
+  window.ASSET_BASE = base.replace(/\/$/, '') + '/';
+})();
+</script>
     <!-- Google Fonts removed for faster loading in China -->
     <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -830,7 +845,7 @@ function preloadImagesAndStart() {
                 startQuiz();
             }
         };
-        img.src = 'questions/' + item.q.replace('\n', '');
+        img.src = (window.ASSET_BASE || '/') + 'questions/' + item.q.replace('\n', '');
     });
 }
 
@@ -867,7 +882,7 @@ function renderCurrentQuestion() {
     const qImg = document.getElementById('q-image');
     const hint = document.getElementById('zoom-hint');
     if (item.img) {
-        qImg.src = 'questions/' + item.q.replace('\n', '');
+        qImg.src = (window.ASSET_BASE || '/') + 'questions/' + item.q.replace('\n', '');
         qImg.style.display = 'block';
         if (hint) hint.style.display = 'block';
     } else {
@@ -1085,7 +1100,7 @@ function renderWrongBook() {
         records.map((item, i) => `
       <div class="wrong-book-item">
         <div class="wrong-book-meta"><strong>#${i + 1}</strong></div>
-        <div class="wrong-book-question"><strong>Q${item.questionIndex || '?'}:</strong> ${item.img ? '<img src="questions/' + escapeHtml(item.question) + '" style="max-width:200px;border-radius:4px;cursor:zoom-in;" onclick="zoomImage(this.src)">' : escapeHtml(item.question)}</div>
+        <div class="wrong-book-question"><strong>Q${item.questionIndex || '?'}:</strong> ${item.img ? '<img src="' + (window.ASSET_BASE || '/') + 'questions/' + escapeHtml(item.question) + '" style="max-width:200px;border-radius:4px;cursor:zoom-in;" onclick="zoomImage(this.src)">' : escapeHtml(item.question)}</div>
         <div class="wrong-book-answer"><strong>Correct Answer:</strong> ${escapeHtml(item.answer)}</div>
       </div>
     `).join('') + '</div></div>';
@@ -1378,7 +1393,7 @@ async function analyzeWrongBook() {
       const r = sample[i];
       parts.push({ type: 'text', text: `--- Q${i+1} (Correct: ${r.answer}) ---` });
       if (r.img) {
-        parts.push({ type: 'image', url: 'questions/' + r.question });
+        parts.push({ type: 'image', url: (window.ASSET_BASE || '/') + 'questions/' + r.question });
       }
     }
     parts.push({ type: 'text', text: '\nPlease provide detailed analysis and study recommendations.' });
