@@ -441,6 +441,7 @@ async function renderLeaderboardView(tab) {
       const data = (typeof loadPKLeaderboard === 'function') ? await loadPKLeaderboard() : [];
       if (!data.length) { inner.innerHTML = `<p class="page-empty">No PK records yet — challenge someone!</p>`; return; }
       const me = (typeof igCurrentUser === 'function') && igCurrentUser();
+      const names = (typeof igPrefetchNames === 'function') ? await igPrefetchNames(data.map(r => r.student_id)) : {};
       const medalIcon = i => i === 1 ? '🥇' : i === 2 ? '🥈' : i === 3 ? '🥉' : i;
       const medalCls = i => i === 1 ? 'medal-gold' : i === 2 ? 'medal-silver' : i === 3 ? 'medal-bronze' : '';
       inner.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.92rem;">
@@ -454,7 +455,7 @@ async function renderLeaderboardView(tab) {
         ${data.map((row, i) => `
           <tr class="${medalCls(i + 1)}" style="${me && row.student_id === me.studentId && i + 1 > 3 ? 'outline:2px solid rgba(99,102,241,.4);outline-offset:-2px;font-weight:800;' : ''}">
             <td style="padding:12px 8px;text-align:center;font-weight:800;">${medalIcon(i + 1)}</td>
-            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${escapeHtml(row.student_id)}</td>
+            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${names[row.student_id] ? escapeHtml(names[row.student_id]) + ' <span style="color:#a8a29e;font-size:.75rem;">(' + escapeHtml(row.student_id) + ')</span>' : escapeHtml(row.student_id)}</td>
             <td style="padding:12px 8px;text-align:right;font-weight:800;color:#6366f1;">${row.wins}</td>
             <td style="padding:12px 8px;text-align:right;color:#a8a29e;font-weight:600;">${row.wins}/${row.losses}/${row.ties}</td>
           </tr>`).join('')}
@@ -467,6 +468,7 @@ async function renderLeaderboardView(tab) {
 
   // ===== Quiz 榜（渲染到独立容器，不覆盖 Tab）=====
   const qb = $('lb-quiz-body');
+  qb.innerHTML = `<p class="page-empty">Loading…</p>`;
   try {
     let data = (typeof loadLeaderboardRows === 'function') ? await loadLeaderboardRows() : null;
     if (!data || !data.length) {
@@ -480,6 +482,7 @@ async function renderLeaderboardView(tab) {
       (b.accuracy - a.accuracy));
     const me = (typeof igCurrentUser === 'function') ? igCurrentUser() : null;
     const myRank = me ? data.findIndex(r => r.student_id === me.studentId) + 1 : 0;
+    const names = (typeof igPrefetchNames === 'function') ? await igPrefetchNames(data.map(r => r.student_id)) : {};
     const medal = i => i === 1 ? 'medal-gold' : i === 2 ? 'medal-silver' : i === 3 ? 'medal-bronze' : '';
     const medalIcon = i => i === 1 ? '🥇' : i === 2 ? '🥈' : i === 3 ? '🥉' : i;
     qb.innerHTML = `
@@ -500,7 +503,7 @@ async function renderLeaderboardView(tab) {
         ${data.map((row, i) => `
           <tr class="${medal(i + 1)}" style="border-radius:12px;${me && row.student_id === me.studentId && i + 1 > 3 ? 'outline:2px solid rgba(245,158,11,.5);outline-offset:-2px;font-weight:800;' : ''}">
             <td style="padding:12px 8px;text-align:center;font-weight:800;">${medalIcon(i + 1)}</td>
-            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${escapeHtml(row.student_id)}</td>
+            <td style="padding:12px 8px;font-weight:${i < 3 ? 800 : 500};">${names[row.student_id] ? escapeHtml(names[row.student_id]) + ' <span style="color:#a8a29e;font-size:.75rem;">(' + escapeHtml(row.student_id) + ')</span>' : escapeHtml(row.student_id)}</td>
             <td style="padding:12px 8px;text-align:right;font-weight:700;">${row.unique_questions}</td>
             <td style="padding:12px 8px;text-align:right;font-weight:700;color:${row.accuracy >= 80 ? '#10b981' : row.accuracy >= 60 ? '#f59e0b' : '#ef4444'};">${row.accuracy}%</td>
           </tr>`).join('')}
@@ -521,8 +524,10 @@ function renderAiView() {
       <p style="color:#78716c;font-size:.92rem;margin:0 0 16px;">Configure your AI provider and API key first, then analyze your mistakes for weak points and study suggestions.</p>
       <div id="ai-page-settings"></div>
       <button class="view-action-btn" id="ai-page-analyze" style="margin-top:14px;" disabled>Analyze My Mistakes</button>
-      <div id="ai-page-status" style="font-size:.8rem;color:#78716c;font-weight:600;min-height:1.4em;margin-top:10px;text-align:center;"></div>`;
+      <div id="ai-page-status" style="font-size:.8rem;color:#78716c;font-weight:600;min-height:1.4em;margin-top:10px;text-align:center;"></div>
+      <div id="account-section" style="margin-top:28px;padding-top:20px;border-top:1px solid #ece4d4;"></div>`;
   }
+  if (typeof renderAccountSection === 'function') renderAccountSection();
   // 把既有设置面板 DOM 移植进来（保留全部绑定逻辑）
   const settings = $('ai-settings-panel');
   const host = $('ai-page-settings');
@@ -567,3 +572,84 @@ function shellInit() {
 }
 document.addEventListener('DOMContentLoaded', shellInit);
 if (document.readyState !== 'loading') shellInit();
+
+
+// ===== Account 区（AI Analysis 页底部）=====
+async function renderAccountSection() {
+  const box = document.getElementById('account-section');
+  if (!box) return;
+  const me = (typeof igCurrentUser === 'function') && igCurrentUser();
+  if (!me) { box.innerHTML = ''; return; }
+
+  box.innerHTML = `
+    <h3 style="margin:0 0 14px;font-size:1.05rem;font-weight:800;color:#1e293b;">👤 Account</h3>
+    <div style="background:#fff;border:1px solid #ece4d4;border-radius:14px;padding:16px;margin-bottom:14px;">
+      <p style="font-size:.8rem;color:#78716c;font-weight:700;margin:0 0 8px;">Student ID</p>
+      <p style="font-size:1rem;font-weight:800;color:#1e293b;margin:0 0 16px;">${escapeHtml(me.studentId)}</p>
+      <p style="font-size:.8rem;color:#78716c;font-weight:700;margin:0 0 8px;">Preferred Name <span style="color:#a8a29e;font-weight:500;">(shown in PK & leaderboards)</span></p>
+      <div style="display:flex;gap:8px;">
+        <input id="acc-pname" maxlength="20" placeholder="e.g. Tom" style="flex:1;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;">
+        <button id="acc-pname-save" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Save</button>
+      </div>
+      <p id="acc-pname-msg" style="font-size:.75rem;color:#10b981;font-weight:700;min-height:1.2em;margin:6px 0 0;"></p>
+    </div>
+    <div style="background:#fff;border:1px solid #ece4d4;border-radius:14px;padding:16px;margin-bottom:14px;">
+      <p style="font-size:.8rem;color:#78716c;font-weight:700;margin:0 0 10px;">Change Password</p>
+      <input id="acc-old-pass" type="password" placeholder="Current password" style="width:100%;box-sizing:border-box;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;margin-bottom:8px;">
+      <input id="acc-new-pass" type="password" placeholder="New password (min 4 chars)" style="width:100%;box-sizing:border-box;padding:10px 12px;border:2px solid rgba(180,130,70,.15);border-radius:10px;font-family:inherit;margin-bottom:10px;">
+      <button id="acc-pass-btn" style="width:100%;padding:11px;border:none;border-radius:10px;background:#334155;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Update Password</button>
+      <p id="acc-pass-msg" style="font-size:.75rem;font-weight:700;min-height:1.2em;margin:6px 0 0;"></p>
+    </div>
+    <div style="background:#fef2f2;border:1.5px solid rgba(220,53,69,.25);border-radius:14px;padding:16px;">
+      <p style="font-size:.9rem;font-weight:800;color:#dc2626;margin:0 0 4px;">⚠️ Danger Zone</p>
+      <p style="font-size:.75rem;color:#a8a29e;margin:0 0 12px;">Deleting your account permanently removes all answers, PK history, and the account itself. This cannot be undone.</p>
+      <input id="acc-del-pass" type="password" placeholder="Password to confirm deletion" style="width:100%;box-sizing:border-box;padding:10px 12px;border:2px solid rgba(220,53,69,.2);border-radius:10px;font-family:inherit;margin-bottom:10px;">
+      <button id="acc-del-btn" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;">Delete My Account</button>
+      <p id="acc-del-msg" style="font-size:.75rem;font-weight:700;min-height:1.2em;margin:6px 0 0;"></p>
+    </div>`;
+
+  // Preferred name：加载现有值 + 保存
+  const pnameInput = document.getElementById('acc-pname');
+  const pn = await loadMyPreferredName();
+  if (pn) pnameInput.value = pn;
+  document.getElementById('acc-pname-save').onclick = async () => {
+    const msg = document.getElementById('acc-pname-msg');
+    const ok = await savePreferredName(pnameInput.value);
+    msg.style.color = ok ? '#10b981' : '#ef4444';
+    msg.textContent = ok ? 'Saved ✓' : 'Save failed';
+    if (ok && typeof igCurrentUser === 'function') {
+      const u = igCurrentUser();
+      if (u) { u.preferredName = pnameInput.value.trim(); sessionStorage.setItem('ig-auth-user', JSON.stringify(u)); }
+    }
+  };
+
+  // 改密码
+  document.getElementById('acc-pass-btn').onclick = async () => {
+    const msg = document.getElementById('acc-pass-msg');
+    const oldP = document.getElementById('acc-old-pass').value;
+    const newP = document.getElementById('acc-new-pass').value;
+    if (newP.length < 4) { msg.style.color = '#ef4444'; msg.textContent = 'New password must be at least 4 characters'; return; }
+    msg.style.color = '#78716c'; msg.textContent = 'Updating…';
+    const r = await changeMyPassword(oldP, newP);
+    msg.style.color = r.ok ? '#10b981' : '#ef4444';
+    msg.textContent = r.ok ? 'Password updated ✓' : r.msg;
+    if (r.ok) { document.getElementById('acc-old-pass').value = ''; document.getElementById('acc-new-pass').value = ''; }
+  };
+
+  // 注销（二次 confirm）
+  document.getElementById('acc-del-btn').onclick = async () => {
+    const pass = document.getElementById('acc-del-pass').value;
+    if (!pass) { const m = document.getElementById('acc-del-msg'); m.style.color = '#ef4444'; m.textContent = 'Enter your password to confirm'; return; }
+    if (!confirm('Delete your account and ALL data? This cannot be undone.')) return;
+    if (!confirm('Are you REALLY sure? Final confirmation.')) return;
+    const msg = document.getElementById('acc-del-msg');
+    msg.style.color = '#78716c'; msg.textContent = 'Deleting…';
+    const r = await deleteMyAccount(pass);
+    if (r.ok) {
+      if (typeof logout === 'function') logout();
+      alert('Account deleted. Goodbye.');
+    } else {
+      msg.style.color = '#ef4444'; msg.textContent = r.msg;
+    }
+  };
+}

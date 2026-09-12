@@ -280,6 +280,7 @@ async function pkOnRoom(room) {
   }
 
   // 对手进度更新
+  s.oppStudentId = s.role === 'host' ? room.guest_id : room.host_id;
   const oppScoreField = s.role === 'host' ? 'guest_score' : 'host_score';
   const oppAnsField = s.role === 'host' ? 'guest_answered' : 'host_answered';
   s.oppScore = room[oppScoreField] || 0;
@@ -318,11 +319,19 @@ async function pkStartGame(room) {
   pkPoll();
 }
 
-function pkUpdateScoreboard() {
+async function pkUpdateScoreboard() {
   const s = pkState; if (!s) return;
   const me = document.getElementById('pk-me-name'), opp = document.getElementById('pk-opp-name');
   if (me) me.textContent = pkMyName() + ' (you)';
-  if (opp) opp.textContent = s.role === 'host' ? 'Opponent' : 'Host';
+  if (opp) {
+    // 对手显示 preferred name（从房间数据取对手学号，异步查名）
+    const oppSid = s.oppStudentId || null;
+    opp.textContent = s.role === 'host' ? 'Opponent' : 'Host';
+    if (oppSid && typeof igPrefetchNames === 'function') {
+      const names = await igPrefetchNames([oppSid]);
+      if (names[oppSid]) opp.textContent = names[oppSid];
+    }
+  }
   const ms = document.getElementById('pk-me-score'), os = document.getElementById('pk-opp-score');
   if (ms) ms.textContent = s.myScore;
   if (os) os.textContent = s.oppScore;

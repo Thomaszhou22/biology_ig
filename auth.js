@@ -280,3 +280,65 @@ function authInit() {
 }
 document.addEventListener('DOMContentLoaded', authInit);
 if (document.readyState !== 'loading') authInit();
+
+
+// ===== Account 管理（AI Analysis 页下方 Account 区）=====
+async function loadMyPreferredName() {
+  if (!currentUser) return null;
+  try {
+    const rows = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${currentUser.studentId}&select=preferred_name`);
+    return (rows && rows.length && rows[0].preferred_name) || null;
+  } catch (e) { return null; }
+}
+
+async function savePreferredName(name) {
+  if (!currentUser) return false;
+  const v = String(name || '').trim().slice(0, 20);
+  try {
+    await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${currentUser.studentId}`,
+      { method: 'PATCH', body: JSON.stringify({ preferred_name: v || null }) });
+    return true;
+  } catch (e) { return false; }
+}
+
+async function changeMyPassword(oldPass, newPass) {
+  if (!currentUser) return { ok: false, msg: 'Not signed in' };
+  try {
+    const r = await sbFetch(`/rest/v1/rpc/change_ig_password?p_sid=${encodeURIComponent(currentUser.studentId)}&p_old=${encodeURIComponent(oldPass)}&p_new=${encodeURIComponent(newPass)}`);
+    if (r === true) return { ok: true };
+    return { ok: false, msg: r === false ? 'Wrong current password' : 'Change failed' };
+  } catch (e) { return { ok: false, msg: e.message || 'Network error' }; }
+}
+
+async function deleteMyAccount(pass) {
+  if (!currentUser) return { ok: false, msg: 'Not signed in' };
+  try {
+    const r = await sbFetch(`/rest/v1/rpc/delete_ig_account?p_sid=${encodeURIComponent(currentUser.studentId)}&p_pass=${encodeURIComponent(pass)}`);
+    if (r === true) return { ok: true };
+    return { ok: false, msg: 'Wrong password' };
+  } catch (e) { return { ok: false, msg: e.message || 'Network error' }; }
+}
+
+// 供 PK / 排行榜取显示名：preferred name 优先，无则学号
+function igDisplayName(sid) {
+  if (!sid) return '—';
+  if (currentUser && sid === currentUser.studentId && currentUser.preferredName) return currentUser.preferredName;
+  // 其他用户：由调用方异步补齐（igPrefetchNames）
+  return sid;
+}
+
+// 批量拉取用户 preferred name（排行榜/PK 显示用），带 60s 本地缓存
+const igNameCache = { data: {}, ts: 0 };
+async function igPrefetchNames(sids) {
+  if (!sids || !sids.length) return igNameCache.data;
+  if (Date.now() - igNameCache.ts < 60000 && igNameCache.data.__loaded) return igNameCache.data;
+  try {
+    const rows = await sbFetch(`/rest/v1/${SB_TABLE_USERS}?select=student_id,preferred_name&limit=1000`);
+    for (const r of rows || []) {
+      if (r.preferred_name) igNameCache.data[r.student_id] = r.preferred_name;
+    }
+    igNameCache.data.__loaded = true;
+    igNameCache.ts = Date.now();
+  } catch (e) {}
+  return igNameCache.data;
+}
