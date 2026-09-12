@@ -35,6 +35,12 @@ body > * { position: relative; z-index: 1; }
 .option-btn.wrong-answer { background: linear-gradient(135deg, #fee2e2, #fecaca) !important; border-color: #ef4444 !important; color: #991b1b !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.15); animation: shake 0.5s ease; }
 @keyframes shake { 0%,100%{transform:translateX(0)} 15%{transform:translateX(-6px)} 30%{transform:translateX(6px)} 45%{transform:translateX(-4px)} 60%{transform:translateX(4px)} 75%{transform:translateX(-2px)} 90%{transform:translateX(2px)} }
 .options-row { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+.option-btn.selected-answer { border-color:#6366f1; background:rgba(99,102,241,.1); box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+#mock-nav { display:none; gap:10px; margin-top:12px; }
+#mock-nav button { flex:1; padding:13px; border:none; border-radius:12px; font-family:inherit; font-weight:800; font-size:14px; cursor:pointer; transition:all .2s; }
+#mock-prev-btn { background:#fff; color:#64748b; border:2px solid rgba(100,116,139,.18); }
+#mock-next-btn { background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; }
+#mock-nav button:disabled { opacity:.4; cursor:not-allowed; }
 .status-msg { font-weight: 700; text-align: center; padding: 12px; border-radius: 12px; margin-top: 12px; display: none; font-size: 15px; letter-spacing: 0.5px; animation: msgIn 0.3s ease; }
 @keyframes msgIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
 .correct { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border: 1px solid rgba(16,185,129,0.3); }
@@ -284,6 +290,10 @@ body > * { position: relative; z-index: 1; }
                 <img id="q-image" style="display:none;" onclick="zoomImage(this.src)" />
                 <div id="zoom-hint" class="zoom-hint" style="display:none;"><button class="zoom-btn" onclick="zoomImage(document.getElementById('q-image').src)">Amplify</button></div>
                 <div id="options"></div>
+                <div id="mock-nav">
+                    <button type="button" id="mock-prev-btn">← Previous</button>
+                    <button type="button" id="mock-next-btn">Next →</button>
+                </div>
             </div>
         </div>
         <div id="msg" class="status-msg"></div>
@@ -876,14 +886,75 @@ function renderCurrentQuestion() {
         btn.onclick = () => handleAnswer(letter, btn);
         opt.appendChild(btn);
     });
+
+    // Mock exam mode: show nav, restore previous selection, hide live score
+    const mockNav = document.getElementById('mock-nav');
+    const scoreEl = document.getElementById('score-display');
+    if (isMockExam) {
+        if (mockNav) mockNav.style.display = 'flex';
+        if (scoreEl) scoreEl.style.display = 'none';
+        const prev = mockAnswers[questionIndex];
+        if (prev) {
+            document.querySelectorAll('.option-btn').forEach(b => {
+                if (b.textContent === prev.letter) b.classList.add('selected-answer');
+            });
+        }
+        updateMockNavState();
+    } else {
+        if (mockNav) mockNav.style.display = 'none';
+        if (scoreEl && (totalCorrect + totalWrong) >= 0 && deepQuestions.length) scoreEl.style.display = 'flex';
+    }
+}
+
+function updateMockNavState() {
+    const prevBtn = document.getElementById('mock-prev-btn');
+    const nextBtn = document.getElementById('mock-next-btn');
+    if (!prevBtn || !nextBtn) return;
+    prevBtn.disabled = questionIndex === 0;
+    nextBtn.textContent = questionIndex >= deepQuestions.length - 1 ? 'Finish & Submit' : 'Next →';
+}
+
+// Mock exam settlement: compute totals, record wrongs, finish
+function settleMockExam() {
+    totalCorrect = 0; totalWrong = 0;
+    deepQuestions.forEach((q, i) => {
+        const a = mockAnswers[i];
+        if (!a) return;
+        if (a.correct) totalCorrect++;
+        else { totalWrong++; addWrongQuestionRecord(q, i + 1); }
+    });
+    if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
+    isMockExam = false;
+    document.getElementById('mock-timer-container').style.display = 'none';
+    const mockNav = document.getElementById('mock-nav');
+    if (mockNav) mockNav.style.display = 'none';
+    const rsBtn = document.getElementById('reselect-chapters-btn');
+    if (rsBtn) rsBtn.style.display = '';
+    questionIndex = deepQuestions.length;
+    clearProgress();
+    showFinishOverlay();
+    document.getElementById('abort-btn').style.display = 'block';
+    document.getElementById('score-display').style.display = 'flex';
+    updateScoreDisplay();
 }
 
 function handleAnswer(letter, clickedBtn) {
     if (!isAnswering) return;
-    isAnswering = false;
-
     const qItem = currentQuestionItem;
     const correct = letter === qItem.a;
+
+    // Mock exam mode: silent — record answer, highlight selection only,
+    // no correct/wrong reveal, no auto-advance, answers changeable.
+    if (isMockExam) {
+        mockAnswers[questionIndex] = { letter, correct };
+        document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected-answer'));
+        clickedBtn.classList.add('selected-answer');
+        if (typeof recordAnswerCloud === 'function') recordAnswerCloud(qItem, correct);
+        updateMockNavState();
+        return;
+    }
+
+    isAnswering = false;
 
     // Disable all buttons and highlight
     const allBtns = document.querySelectorAll('.option-btn');
@@ -1447,6 +1518,7 @@ let mockTimerInterval = null;
 let mockTimeRemaining = 0;
 let isMockExam = false;
 let timerHidden = false;
+let mockAnswers = {}; // { questionIndex: {letter, correct} }
 
 function startMockExam() {
   // Collect all questions from all chapters
@@ -1509,8 +1581,12 @@ function startMockExam() {
   deepQuestions = picked;
   activeChapters = QUESTION_CHAPTERS.map(c => c.id);
   isMockExam = true;
+  mockAnswers = {};
   mockTimeRemaining = MOCK_EXAM_DURATION;
   timerHidden = false;
+  // 考试模式：隐藏章节选择（不允许中途换章节）
+  const rsBtn = document.getElementById('reselect-chapters-btn');
+  if (rsBtn) rsBtn.style.display = 'none';
 
   // Show timer bar
   const timerContainer = document.getElementById('mock-timer-container');
@@ -1529,7 +1605,7 @@ function startMockExam() {
       mockTimerInterval = null;
       // Time's up — force finish
       showMsg('⏰ Time\'s up!', 'incorrect');
-      setTimeout(() => { hideMsg(); questionIndex = deepQuestions.length; showFinishOverlay(); clearProgress(); isMockExam = false; }, 1500);
+      setTimeout(() => { hideMsg(); settleMockExam(); }, 1200);
     }
     const elapsed = MOCK_EXAM_DURATION - mockTimeRemaining;
     const pct = Math.round((elapsed / MOCK_EXAM_DURATION) * 100);
@@ -1574,9 +1650,15 @@ function toggleMockTimer() {
 const origAbortQuiz = abortQuiz;
 abortQuiz = function() {
   if (mockTimerInterval) { clearInterval(mockTimerInterval); mockTimerInterval = null; }
+  const wasMock = isMockExam;
   isMockExam = false;
   document.getElementById('mock-timer-container').style.display = 'none';
+  const mockNav = document.getElementById('mock-nav');
+  if (mockNav) mockNav.style.display = 'none';
+  const rsBtn = document.getElementById('reselect-chapters-btn');
+  if (rsBtn) rsBtn.style.display = '';
   origAbortQuiz();
+  if (wasMock) document.getElementById('score-display').style.display = 'none';
 };
 
 // Override showFinishOverlay to clean up mock timer
@@ -1591,6 +1673,14 @@ showFinishOverlay = function() {
 };
 
 const _mockBtn = document.getElementById('mock-exam-btn'); if (_mockBtn) _mockBtn.onclick = startMockExam;
+const _mpBtn = document.getElementById('mock-prev-btn');
+if (_mpBtn) _mpBtn.onclick = () => { if (isMockExam && questionIndex > 0) { questionIndex--; currentQuestionItem = deepQuestions[questionIndex]; isAnswering = true; renderCurrentQuestion(); } };
+const _mnBtn = document.getElementById('mock-next-btn');
+if (_mnBtn) _mnBtn.onclick = () => {
+  if (!isMockExam) return;
+  if (questionIndex >= deepQuestions.length - 1) { settleMockExam(); return; }
+  questionIndex++; currentQuestionItem = deepQuestions[questionIndex]; isAnswering = true; renderCurrentQuestion();
+};
 // Re-bind abort button AFTER the override above so Quit clears the mock timer
 document.getElementById('abort-btn').onclick = abortQuiz;
 // Expose mock state for the app shell

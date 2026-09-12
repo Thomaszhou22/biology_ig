@@ -65,6 +65,7 @@ function buildShell() {
     <div class="drawer-list">
       ${PAGES.map(p => `<button class="drawer-item" data-page="${p.id}">${ICONS[p.icon]}<span>${p.label}</span></button>`).join('')}
     </div>
+    <div id="nav-lock-note" style="margin:0 16px 8px;padding:8px 12px;border-radius:10px;background:rgba(124,58,237,.08);color:#7c3aed;font-size:.75rem;font-weight:700;text-align:center;opacity:0;transition:opacity .3s;"></div>
     <div class="drawer-foot" id="drawer-user"></div>`;
   document.body.append(scrim, drawer);
 
@@ -76,6 +77,15 @@ function buildShell() {
     btn.onclick = () => { navigate(btn.dataset.page, true); closeNav(); };
   });
   window.addEventListener('popstate', () => navigate(pageFromPath(), false));
+  // mock 进行中给抽屉项加禁用样式（每 500ms 刷新状态）
+  setInterval(() => {
+    const active = (typeof isMockExamActive === 'function') && isMockExamActive();
+    drawer.querySelectorAll('.drawer-item').forEach(btn => {
+      const lock = active && btn.dataset.page !== 'home';
+      btn.style.opacity = lock ? '.4' : '';
+      btn.style.pointerEvents = lock ? 'none' : '';
+    });
+  }, 500);
 
   // 页面视图（覆盖层）
   const mk = (id, cls) => {
@@ -150,6 +160,18 @@ body { padding-top:56px; }`;
 
 // === 页面导航 ===
 function navigate(page, push) {
+  // Mock exam in progress: lock navigation — only Home allowed (auto-settles)
+  const mockActive = (typeof isMockExamActive === 'function') && isMockExamActive();
+  if (mockActive && page !== 'home') {
+    // 轻提示 + 拒绝跳转
+    const note = document.getElementById('nav-lock-note');
+    if (note) {
+      note.textContent = 'Mock exam in progress — only Home is available';
+      note.style.opacity = '1';
+      setTimeout(() => { note.style.opacity = '0'; }, 1800);
+    }
+    return;
+  }
   currentPage = page;
   if (push !== false && window.history && history.pushState) {
     try { history.pushState(null, '', (BASE + (ROUTES[page] || '')) || '/'); } catch (e) {}
@@ -167,6 +189,10 @@ function navigate(page, push) {
     const panel = $('info-panel');
     if (panel && infoPanelHome && panel.parentElement !== infoPanelHome) infoPanelHome.appendChild(panel);
     document.body.classList.remove('view-mode');
+    // Mock 进行中回主页 = 提前结束 → 自动结算
+    if ((typeof isMockExamActive === 'function') && isMockExamActive() && typeof settleMockExam === 'function') {
+      settleMockExam();
+    }
   } else {
     if (!infoPanelHome) infoPanelHome = $('info-panel').parentElement;
     if (page === 'mistakes') renderMistakesView();
