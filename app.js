@@ -98,6 +98,23 @@ function buildShell() {
     btn.onclick = () => { navigate(btn.dataset.page, true); closeNav(); };
   });
   window.addEventListener('popstate', () => navigate(pageFromPath(), false));
+  // 开考：隐藏 Quiz 落地页
+  window.addEventListener('quiz-started', () => {
+    const landing = $('quiz-landing');
+    if (landing) landing.style.display = 'none';
+  });
+  // 章节弹窗取消：未开考回落地页
+  const backBtn = document.getElementById('back-to-names-btn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        if (!deepQuestionsActive()) {
+          const landing = $('quiz-landing');
+          if (landing) landing.style.display = '';
+        }
+      }, 50);
+    });
+  }
   // mock 完整结算：Done 点击后回 Mock 落地页
   window.addEventListener('mock-finished', () => {
     const btn = document.getElementById('finish-restart-btn');
@@ -245,11 +262,15 @@ function navigate(page, push) {
   });
 
   if (page === 'home') {
-    // 把 info-panel 移回原处并恢复显示（mock 退出时曾被隐藏）
-    const panel = $('info-panel');
-    if (panel) {
-      if (infoPanelHome && panel.parentElement !== infoPanelHome) infoPanelHome.appendChild(panel);
-      panel.style.display = '';
+    // Quiz 落地页：与 Mock 落地页同款（Start Quiz → 章节选择弹窗）；做题中才显示题目面板
+    if (!deepQuestionsActive()) {
+      renderQuizLanding();
+    } else {
+      const panel = $('info-panel');
+      if (panel) {
+        if (infoPanelHome && panel.parentElement !== infoPanelHome) infoPanelHome.appendChild(panel);
+        panel.style.display = '';
+      }
     }
     document.body.classList.remove('view-mode');
     // Mock 进行中回主页 = 提前结束 → 自动结算
@@ -268,6 +289,42 @@ function navigate(page, push) {
 }
 
 // === Mock Exam 页 ===
+// 做题进行中？（普通 quiz / 错题卷；mock 除外）
+function deepQuestionsActive() {
+  try {
+    return (typeof deepQuestions !== 'undefined') && deepQuestions && deepQuestions.length > 0
+      && (typeof isMockExam === 'undefined' || !isMockExam);
+  } catch (e) { return false; }
+}
+
+// Quiz 落地页：复刻 Mock 落地页
+function renderQuizLanding() {
+  let landing = $('quiz-landing');
+  if (!landing) {
+    landing = document.createElement('div');
+    landing.id = 'quiz-landing';
+    landing.className = 'view-page show';
+    landing.innerHTML = `
+      <div class="view-card">
+        <div class="view-head" style="margin-bottom:14px;">
+          <h2>${ICONS.quiz} Quiz</h2>
+        </div>
+        <p style="color:#78716c;margin:0 0 16px;">Practice with chapter selection, adaptive wrong-question weighting, and per-chapter question counts. Your answers sync to your account.</p>
+        <button class="view-action-btn" id="quiz-start-btn">${ICONS.play}<span>Start Quiz</span></button>
+      </div>`;
+    document.body.appendChild(landing);
+    $('quiz-start-btn').onclick = () => {
+      landing.style.display = 'none';
+      const panel = $('info-panel');
+      if (panel) panel.style.display = '';
+      if (typeof openChapterModal === 'function') openChapterModal();
+    };
+  }
+  landing.style.display = '';
+  const panel = $('info-panel');
+  if (panel) panel.style.display = 'none';
+}
+
 function renderMockView() {
   const body = $('view-mock-body');
   const active = typeof isMockExamActive === 'function' ? isMockExamActive() : false;

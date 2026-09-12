@@ -924,6 +924,7 @@ function startQuiz() {
     questionIndex = 0;
     totalCorrect = 0;
     totalWrong = 0;
+    window.dispatchEvent(new CustomEvent('quiz-started'));
     document.getElementById('progress-bar').style.display = 'block';
     document.getElementById('score-display').style.display = 'flex';
     hideFinishOverlay();
