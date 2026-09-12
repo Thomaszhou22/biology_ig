@@ -137,12 +137,12 @@ function renderPKView() {
     <p style="color:#78716c;font-size:.92rem;margin:0 0 18px;">Challenge a classmate to a real-time duel on the same questions.</p>
 
     <div id="pk-lobby">
-      <div style="display:flex;gap:10px;margin-bottom:14px;">
-        <button id="pk-create-btn" style="flex:1;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Create Room</button>
-        <input id="pk-join-input" placeholder="CODE" maxlength="4" autocomplete="off" autocapitalize="characters" style="width:90px;text-align:center;text-transform:uppercase;font-family:inherit;font-weight:800;font-size:16px;letter-spacing:3px;padding:12px;border:2px solid rgba(180,130,70,.15);border-radius:12px;">
-        <div id="pk-join-note" style="width:100%;font-size:.72rem;color:#d97706;font-weight:700;text-align:center;opacity:0;transition:opacity .3s;margin-top:4px;"></div>
-        <button id="pk-join-btn" style="padding:12px 18px;border:none;border-radius:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Join</button>
+      <button id="pk-create-btn" style="width:100%;padding:14px;margin-bottom:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;">Create Room</button>
+      <div style="display:flex;gap:10px;margin-bottom:4px;">
+        <input id="pk-join-input" placeholder="enter code to join an existing room" maxlength="4" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:0;text-transform:uppercase;font-family:inherit;font-weight:700;font-size:14px;letter-spacing:1px;padding:12px 14px;border:2px solid rgba(99,102,241,.2);border-radius:12px;">
+        <button id="pk-join-btn" style="padding:12px 18px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;white-space:nowrap;">Join</button>
       </div>
+      <div id="pk-join-note" style="width:100%;font-size:.72rem;color:#d97706;font-weight:700;text-align:center;opacity:0;transition:opacity .3s;margin-bottom:10px;"></div>
       <button id="pk-history-btn" style="width:100%;padding:10px;border:2px solid rgba(180,130,70,.12);border-radius:12px;background:none;color:#c4943a;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">🏆 PK History</button>
     </div>
 
