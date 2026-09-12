@@ -91,6 +91,12 @@ function buildShell() {
   window.addEventListener('popstate', () => navigate(pageFromPath(), false));
   // 中途退出 mock：回 Mock 落地页（紫色 Start 界面）
   window.addEventListener('mock-abandoned', () => {
+    // 先把题目面板移回主页并整体隐藏，避免 "Select chapters to start" 落在落地页下方
+    const panel = $('info-panel');
+    if (panel) {
+      if (infoPanelHome && panel.parentElement !== infoPanelHome) infoPanelHome.appendChild(panel);
+      panel.style.display = 'none';
+    }
     navigate('mock', true);
     const btn = $('mock-start-btn');
     if (btn) btn.style.display = '';
@@ -205,9 +211,12 @@ function navigate(page, push) {
   });
 
   if (page === 'home') {
-    // 把 info-panel 移回原处
+    // 把 info-panel 移回原处并恢复显示（mock 退出时曾被隐藏）
     const panel = $('info-panel');
-    if (panel && infoPanelHome && panel.parentElement !== infoPanelHome) infoPanelHome.appendChild(panel);
+    if (panel) {
+      if (infoPanelHome && panel.parentElement !== infoPanelHome) infoPanelHome.appendChild(panel);
+      panel.style.display = '';
+    }
     document.body.classList.remove('view-mode');
     // Mock 进行中回主页 = 提前结束 → 自动结算
     if ((typeof isMockExamActive === 'function') && isMockExamActive() && typeof settleMockExam === 'function') {
