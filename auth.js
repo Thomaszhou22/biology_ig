@@ -119,7 +119,14 @@ async function doGateAuth() {
       if (users && users.length) { msg.style.color = '#ef4444'; msg.textContent = 'This student ID is already registered — sign in instead'; return; }
       await sbFetch(`/rest/v1/${SB_TABLE_USERS}`, { method: 'POST', body: JSON.stringify({ student_id: sid, pass_hash: hash }) });
     } else {
-      if (!users || !users.length) { msg.style.color = '#ef4444'; msg.textContent = 'No account for this ID — sign up first'; return; }
+      if (!users || !users.length) {
+        // 学号合法但账号不存在：自动切到 Sign up 并保留已填信息
+        showGateForm('signup');
+        document.getElementById('gate-sid').value = sid;
+        document.getElementById('gate-pass').value = pass;
+        document.getElementById('gate-pass2').focus();
+        return;
+      }
       if (users[0].pass_hash !== hash) { msg.style.color = '#ef4444'; msg.textContent = 'Wrong password'; return; }
     }
     currentUser = { studentId: sid };

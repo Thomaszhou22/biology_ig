@@ -21,10 +21,10 @@ const ICONS = {
 const PAGES = [
   { id: 'home', label: 'Quiz', icon: 'quiz' },
   { id: 'mock', label: 'Mock Exam', icon: 'clock' },
+  { id: 'pk', label: '1v1 PK', icon: 'swords' },
   { id: 'mistakes', label: 'Mistake Collection', icon: 'book' },
   { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy' },
-  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' },
-  { id: 'pk', label: '1v1 PK', icon: 'swords' }
+  { id: 'ai', label: 'AI Analysis', icon: 'sparkles' }
 ];
 
 let currentPage = 'home';

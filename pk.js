@@ -100,6 +100,13 @@ function renderPKView() {
     <div id="pk-result" style="display:none;text-align:center;padding:24px 0;"></div>
   `;
 
+  // 房间码输入过滤：仅大写字母与数字，小写自动转大写
+  const joinInput = document.getElementById('pk-join-input');
+  joinInput.addEventListener('input', () => {
+    const v = joinInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (joinInput.value !== v) joinInput.value = v;
+  });
+
   document.getElementById('pk-create-btn').onclick = pkShowSetup;
   document.getElementById('pk-join-btn').onclick = pkJoinRoom;
   document.getElementById('pk-history-btn').onclick = pkShowHistory;
@@ -207,7 +214,9 @@ async function pkOnRoom(room) {
   const oppAnsField = s.role === 'host' ? 'guest_answered' : 'host_answered';
   s.oppScore = room[oppScoreField] || 0;
   s.oppAnswered = room[oppAnsField] || 0;
-  s.oppDone = room.status === 'host_done' || room.status === 'guest_done' || room.status === 'finished';
+  // 对手完成 = 对方那侧的 done 标记（host 的对手是 guest_done，反之亦然）
+  const oppDoneStatus = s.role === 'host' ? 'guest_done' : 'host_done';
+  s.oppDone = room.status === oppDoneStatus || room.status === 'finished';
 
   pkUpdateScoreboard();
 
@@ -305,7 +314,7 @@ async function pkMarkDone() {
     await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'PATCH', body: JSON.stringify({ status: oppDoneAlready ? 'finished' : st }) });
     if (oppDoneAlready) await pkFinish(null);
   } catch (e) {}
-  document.getElementById('pk-q-area').innerHTML = '<p style="text-align:center;color:#a8a29e;font-weight:700;padding:20px 0;">Done! Waiting for opponent…</p>';
+  document.getElementById('pk-q-area').innerHTML = '<p style="text-align:center;color:#a8a29e;font-weight:700;padding:20px 0;">Waiting for opponent…</p>';
 }
 
 async function pkFinish(room) {
