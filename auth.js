@@ -301,20 +301,19 @@ async function loadMyPreferredName() {
 }
 
 async function savePreferredName(name) {
-  if (!currentUser) return false;
+  if (!currentUser || !validSid(currentUser.studentId)) return false;
   const v = String(name || '').trim().slice(0, 20);
   try {
-    if (!validSid(currentUser.studentId)) return false;
-    await sbFetch(`/rest/v1/${SB_TABLE_USERS}?student_id=eq.${encodeURIComponent(currentUser.studentId)}`,
-      { method: 'PATCH', body: JSON.stringify({ preferred_name: v || null }) });
-    return true;
+    // 走 SECURITY DEFINER RPC（ig_users 表的 PATCH 被 RLS 拦截，直写会静默失败）
+    const ok = await sbFetch('/rest/v1/rpc/set_preferred_name', { method: 'POST', body: JSON.stringify({ p_sid: currentUser.studentId, p_name: v }) });
+    return ok === true;
   } catch (e) { return false; }
 }
 
 async function changeMyPassword(oldPass, newPass) {
   if (!currentUser) return { ok: false, msg: 'Not signed in' };
   try {
-    const r = await sbFetch(`/rest/v1/rpc/change_ig_password?p_sid=${encodeURIComponent(currentUser.studentId)}&p_old=${encodeURIComponent(oldPass)}&p_new=${encodeURIComponent(newPass)}`);
+    const r = await sbFetch('/rest/v1/rpc/change_ig_password', { method: 'POST', body: JSON.stringify({ p_sid: currentUser.studentId, p_old: oldPass, p_new: newPass }) });
     if (r === true) return { ok: true };
     return { ok: false, msg: r === false ? 'Wrong current password' : 'Change failed' };
   } catch (e) { return { ok: false, msg: e.message || 'Network error' }; }
@@ -323,7 +322,7 @@ async function changeMyPassword(oldPass, newPass) {
 async function deleteMyAccount(pass) {
   if (!currentUser) return { ok: false, msg: 'Not signed in' };
   try {
-    const r = await sbFetch(`/rest/v1/rpc/delete_ig_account?p_sid=${encodeURIComponent(currentUser.studentId)}&p_pass=${encodeURIComponent(pass)}`);
+    const r = await sbFetch('/rest/v1/rpc/delete_ig_account', { method: 'POST', body: JSON.stringify({ p_sid: currentUser.studentId, p_pass: pass }) });
     if (r === true) return { ok: true };
     return { ok: false, msg: 'Wrong password' };
   } catch (e) { return { ok: false, msg: e.message || 'Network error' }; }
