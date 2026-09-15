@@ -356,12 +356,12 @@ async function pkOnRoom(room) {
     return;
   }
 
-  // 逃跑检测：仅对手已加入且开局后启用；阈值 30s（刷新重载心跳暂停 3-8s，留足余量防误判）
+  // 逃跑检测：仅对手已加入且开局后启用；阈值 15s（刷新重载心跳暂停 3-8s，仍留余量防误判）
   const opponentJoined = s.role === 'host' ? !!room.guest_id : true;
   if (opponentJoined && room.status !== 'waiting' && room.status !== 'finished') {
     const oppSeenField = s.role === 'host' ? 'guest_seen' : 'host_seen';
     const oppSeen = room[oppSeenField] ? Date.parse(room[oppSeenField]) : 0;
-    if (oppSeen && Date.now() - oppSeen > 30000) {
+    if (oppSeen && Date.now() - oppSeen > 15000) {
       // 对手跑了：清理房间，留守方判胜
       try { await pkApi(`/rest/v1/${PK_TABLE}?code=eq.${s.code}`, { method: 'DELETE' }); } catch (e) {}
       pkOnOpponentFled();
@@ -390,13 +390,16 @@ async function pkOnRoom(room) {
 // ============ 开局（3-2-1 + 答题区）============
 async function pkStartGame(room) {
   const s = pkState;
-  // 倒计时浮层
+  // 倒计时浮层（与 start_at 对齐：双方按同一时刻结束倒计时，消除房主轮询延迟）
+  const startAt = room && room.start_at ? Date.parse(room.start_at) : Date.now();
+  const REMAIN_TOTAL = 3000; // 3 秒倒计时窗口
+  let remain = Math.max(120, REMAIN_TOTAL - (Date.now() - startAt)); // 至少留 120ms 渲染
   const cd = document.createElement('div');
   cd.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(245,240,232,.9);display:flex;align-items:center;justify-content:center;pointer-events:none;';
   cd.innerHTML = '<span style="font-size:110px;font-weight:800;color:#1e293b;"></span>';
   document.body.appendChild(cd);
   const num = cd.firstChild;
-  let n = 3;
+  let n = Math.ceil(remain / 1000);
   num.textContent = n;
   await new Promise(r => { const iv = setInterval(() => { n--; if (n <= 0) { clearInterval(iv); cd.remove(); r(); } else num.textContent = n; }, 1000); });
 

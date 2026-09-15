@@ -185,6 +185,12 @@ function buildShell() {
   // Mock Exam 是独立完整页面：去掉右上角叉
   const mockClose = document.querySelector('#view-mock .view-close');
   if (mockClose) mockClose.remove();
+  // Mistake Collection / Leaderboard / AI Analysis 同样去掉关闭叉：
+  // 这些页面不允许一键回主页，必须重新从菜单选择（防止误触打断做题状态）
+  for (const vid of ['mistakes', 'leaderboard', 'ai']) {
+    const c = document.querySelector('#view-' + vid + ' .view-close');
+    if (c) c.remove();
+  }
   const mockHead = document.querySelector('#view-mock .view-head');
   if (mockHead) mockHead.style.marginBottom = '14px';
 
