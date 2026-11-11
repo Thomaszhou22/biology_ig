@@ -7,6 +7,8 @@
 [![Vercel](https://img.shields.io/badge/Vercel-deployed-black)](https://biologyjumpig.vercel.app)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
+**English** | **[中文](README.zh-CN.md)**
+
 **▶ Play now: [igmcq.com](https://igmcq.com)** (China-friendly custom domain, no VPN needed)
 
 Backup mirrors: [biologyjumpig.vercel.app](https://biologyjumpig.vercel.app) · [thomaszhou22.github.io/biology_ig](https://thomaszhou22.github.io/biology_ig/)
