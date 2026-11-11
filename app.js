@@ -690,7 +690,7 @@ async function renderAccountPage() {
 
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 14px;">
-      <h3 style="margin:0;font-size:1.05rem;font-weight:800;color:#1e293b;">Account</h3>
+      <h3 style="margin:0;font-size:1.05rem;font-weight:800;color:#1e293b;"></h3>
       <button id="acc-logout-btn" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid rgba(180,130,70,.2);border-radius:10px;background:#fff;color:#c4943a;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;">Log out</button>
     </div>
     <div style="background:#fff;border:1px solid #ece4d4;border-radius:14px;padding:16px;margin-bottom:14px;">
